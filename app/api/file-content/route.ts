@@ -27,6 +27,7 @@ export async function GET(request: Request) {
     }
     
     const content = fs.readFileSync(filePath, 'utf-8')
+    // console.log('Read file content:', content)
     
     return NextResponse.json({ content })
   } catch (error) {

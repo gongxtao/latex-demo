@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kai Carter - Resume</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: #f8f9fa;
+            color: #333;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .resume-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #fff;
+            border: 1px solid #ddd;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        /* Top Header */
+        .header {
+            display: flex;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .contact-info {
+            width: 30%;
+            padding: 20px;
+            border-right: 1px dashed #ccc;
+            font-size: 0.9em;
+        }
+
+        .contact-info h3 {
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #2c3e50;
+            font-size: 1em;
+        }
+
+        .contact-item {
+            margin-bottom: 8px;
+        }
+
+        .contact-item strong {
+            display: inline-block;
+            width: 70px;
+            color: #555;
+        }
+
+        .contact-item a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+
+        .contact-item a:hover {
+            text-decoration: underline;
+        }
+
+        .name-title {
+            width: 70%;
+            padding: 20px 25px;
+            text-align: center;
+        }
+
+        .name {
+            font-size: 2.8em;
+            font-weight: 700;
+            color: #2c3e50;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .title {
+            font-size: 1.4em;
+            color: #555;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Main Content Grid */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 0 20px 20px;
+        }
+
+        .left-column, .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Section Styling */
+        .section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            position: relative;
+        }
+
+        .section-title {
+            position: absolute;
+            top: -12px;
+            left: 15px;
+            background: #fff;
+            padding: 0 8px;
+            font-weight: 700;
+            color: #2c3e50;
+            font-size: 1.1em;
+        }
+
+        .section-content {
+            margin-top: 10px;
+        }
+
+        /* Profile */
+        .profile-text {
+            font-size: 0.95em;
+            text-align: justify;
+            line-height: 1.7;
+        }
+
+        /* Skills */
+        .skills-list {
+            list-style: none;
+        }
+
+        .skill-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 0.95em;
+        }
+
+        .stars {
+            margin-right: 10px;
+            color: #483EAB;
+            font-size: 1.1em;
+        }
+
+        /* Work Experience */
+        .job {
+            position: relative;
+            padding-left: 15px;
+            margin-bottom: 18px;
+            border-left: 3px solid #483EAB;
+        }
+
+        .job:last-child {
+            margin-bottom: 0;
+        }
+
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 6px;
+            flex-wrap: wrap;
+        }
+
+        .job-title {
+            font-weight: 700;
+            color: #2c3e50;
+            font-size: 1em;
+        }
+
+        .job-company {
+            font-weight: 700;
+            color: #483EAB;
+            margin-right: 10px;
+        }
+
+        .job-date {
+            font-size: 0.85em;
+            color: #777;
+            font-style: italic;
+            white-space: nowrap;
+        }
+
+        .job-desc {
+            font-size: 0.9em;
+            color: #444;
+            line-height: 1.5;
+        }
+
+        /* Hobbies */
+        .hobbies-list {
+            list-style: none;
+            padding-left: 5px;
+        }
+
+        .hobbies-list li {
+            position: relative;
+            padding-left: 18px;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        .hobbies-list li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #483EAB;
+            font-weight: bold;
+        }
+
+        /* Education */
+        .education-item {
+            margin-bottom: 16px;
+        }
+
+        .education-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .edu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 4px;
+            flex-wrap: wrap;
+        }
+
+        .edu-school {
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .edu-date {
+            font-size: 0.85em;
+            color: #777;
+            font-style: italic;
+        }
+
+        .edu-degree {
+            font-size: 0.95em;
+            color: #444;
+            font-style: italic;
+        }
+
+        .edu-awards {
+            font-size: 0.9em;
+            color: #27ae60;
+            margin-top: 3px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+            }
+            .contact-info, .name-title {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px dashed #ccc;
+                text-align: center;
+            }
+            .name-title {
+                padding-top: 15px;
+            }
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            .name {
+                font-size: 2.2em;
+            }
+        }
+
+        @media print {
+            body { padding: 0; }
+            .resume-container { box-shadow: none; border: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="resume-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="contact-info">
+                <h3>Contact</h3>
+                <div class="contact-item"><strong>Phone:</strong> 678-555-0103</div>
+                <div class="contact-item"><strong>Website:</strong> <a href="https://www.lamnahealthcare.com" target="_blank">www.lamnahealthcare.com</a></div>
+                <div class="contact-item"><strong>Email:</strong> <a href="mailto:kai@lamnahealthcare.com">kai@lamnahealthcare.com</a></div>
+            </div>
+            <div class="name-title">
+                <h1 class="name">Kai Carter</h1>
+                <p class="title">General Practitioner</p>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Left Column -->
+            <div class="left-column">
+                <!-- Profile -->
+                <div class="section">
+                    <h3 class="section-title">Profile</h3>
+                    <div class="section-content">
+                        <p class="profile-text">
+                            Experienced and compassionate GP dedicated to delivering excellent patient care. 
+                            Known for strong diagnostic skills and a patient-centered approach. 
+                            Committed to promoting health and wellness through personalized treatment plans.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Skills -->
+                <div class="section">
+                    <h3 class="section-title">Skills</h3>
+                    <div class="section-content">
+                        <ul class="skills-list">
+                            <li class="skill-item"><span class="stars">★★★★★</span> Clinical diagnosis</li>
+                            <li class="skill-item"><span class="stars">★★★★★</span> Patient-centered care</li>
+                            <li class="skill-item"><span class="stars">★★★★☆</span> Chronic disease management</li>
+                            <li class="skill-item"><span class="stars">★★★★☆</span> Electronic health records</li>
+                            <li class="skill-item"><span class="stars">★★★★★</span> Health promotion</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Hobbies -->
+                <div class="section">
+                    <h3 class="section-title">Hobbies</h3>
+                    <div class="section-content">
+                        <ul class="hobbies-list">
+                            <li>Running</li>
+                            <li>Photography</li>
+                            <li>Traveling</li>
+                            <li>Cooking</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="right-column">
+                <!-- Work Experience -->
+                <div class="section" style="flex: 1;">
+                    <h3 class="section-title">Work experience</h3>
+                    <div class="section-content">
+                        <div class="job">
+                            <div class="job-header">
+                                <div>
+                                    <span class="job-company">Lamna Healthcare</span>
+                                    <span class="job-title">General Practitioner</span>
+                                </div>
+                                <span class="job-date">20XX – Present</span>
+                            </div>
+                            <p class="job-desc">
+                                Implemented evidence-based medicine for accurate diagnosis, spearheaded a community health fair, provided free screenings to over 200 residents
+                            </p>
+                        </div>
+
+                        <div class="job">
+                            <div class="job-header">
+                                <div>
+                                    <span class="job-company">Tyler Stein MD</span>
+                                    <span class="job-title">Family Physician</span>
+                                </div>
+                                <span class="job-date">20XX – 20XX</span>
+                            </div>
+                            <p class="job-desc">
+                                Managed a diverse patient caseload, led a smoking cessation program resulting in a 30% increase in successful quit attempts
+                            </p>
+                        </div>
+
+                        <div class="job">
+                            <div class="job-header">
+                                <div>
+                                    <span class="job-company">City Hospital</span>
+                                    <span class="job-title">Medical Officer</span>
+                                </div>
+                                <span class="job-date">20XX – 20XX</span>
+                            </div>
+                            <p class="job-desc">
+                                Provided emergency medical care with a focus on trauma cases, collaborated with specialists to enhance patient outcomes
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Education -->
+                <div class="section">
+                    <h3 class="section-title">Education</h3>
+                    <div class="section-content">
+                        <div class="education-item">
+                            <div class="edu-header">
+                                <span class="edu-school">Jasper University</span>
+                                <span class="edu-date">20XX – 20XX</span>
+                            </div>
+                            <div class="edu-degree"></div>
+                            <div class="edu-awards">Dean's List, Medical Research Award</div>
+                        </div>
+
+                        <div class="education-item">
+                            <div class="edu-header">
+                                <span class="edu-school">Bellows College</span>
+                                <span class="edu-date">20XX – 20XX</span>
+                            </div>
+                            <div class="edu-degree">Bachelor of Science in Biology, Cum Laude, outstanding research thesis</div>
+                            <div class="edu-awards"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

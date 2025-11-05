@@ -55,7 +55,7 @@ ${latexContent}
 Please modify the above HTML template based on the information provided by the user in the conversation to generate a complete resume.`
     }
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetch(process.env.OPENROUTER_API_URL + '/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -64,7 +64,7 @@ Please modify the above HTML template based on the information provided by the u
         'X-Title': 'AI Resume Editor',
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet',
+        model: process.env.OPENROUTER_API_MODEL || 'anthropic/claude-3.5-sonnet',
         messages: [systemMessage, userMessage],
         temperature: 0.3,
         max_tokens: 8000,

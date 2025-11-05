@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       content: 'You are a professional resume assistant. Your task is to help users collect and organize their personal information, work experience, educational background, skills, and other resume-related content. Please ask friendly questions and guide users to provide complete resume information.'
     }
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetch(process.env.OPENROUTER_API_URL + '/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
         'X-Title': 'AI Resume Editor',
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet',
+        model: process.env.OPENROUTER_API_MODEL || 'anthropic/claude-3.5-sonnet',
         messages: [systemMessage, ...messages],
         temperature: 0.7,
         max_tokens: 2000,
