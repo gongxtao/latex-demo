@@ -24,7 +24,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     let current: Node | null = node
     
     while (current && current.parentNode) {
-      const parent = current.parentNode
+      const parent = current.parentNode as Node
       const index = Array.from(parent.childNodes).indexOf(current as ChildNode)
       path.unshift(index)
       current = parent
@@ -199,6 +199,39 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     setPreviewKey(prev => prev + 1)
   }
 
+  // Formatting helpers
+  const getIframeDoc = () => iframeRef.current?.contentDocument || iframeRef.current?.contentWindow?.document || null
+
+  const applyFormat = (fn: (doc: Document) => void) => {
+    const doc = getIframeDoc()
+    if (!doc || !isEditing) return
+    fn(doc)
+    isUpdatingRef.current = true
+    const newHtml = doc.documentElement.outerHTML
+    onContentChange(newHtml)
+    setTimeout(() => {
+      isUpdatingRef.current = false
+    }, 50)
+  }
+
+  const applyHeading = (level: number) => applyFormat(doc => doc.execCommand('formatBlock', false, `h${level}`))
+  const applyParagraph = () => applyFormat(doc => doc.execCommand('formatBlock', false, 'p'))
+  const insertBulletedList = () => applyFormat(doc => doc.execCommand('insertUnorderedList'))
+  const insertNumberedList = () => applyFormat(doc => doc.execCommand('insertOrderedList'))
+  const insertLink = () => {
+    const url = typeof window !== 'undefined' ? window.prompt('请输入链接地址') : null
+    if (!url) return
+    applyFormat(doc => {
+      const sel = doc.getSelection()
+      if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+        doc.execCommand('createLink', false, url)
+      } else {
+        doc.execCommand('insertHTML', false, `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`) 
+      }
+    })
+  }
+  const removeLink = () => applyFormat(doc => doc.execCommand('unlink'))
+
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Toolbar */}
@@ -217,28 +250,42 @@ export default function EditablePreview({ selectedFile, content, onContentChange
             'Please select an HTML file'
           )}
         </div>
-        <div className="flex space-x-2">
-          <button
-            onClick={toggleEditMode}
-            disabled={!selectedFile}
-            className={`px-4 py-2 rounded-lg transition-colors font-medium ${
-              isEditing
-                ? 'bg-green-500 text-white hover:bg-green-600'
-                : 'bg-blue-500 text-white hover:bg-blue-600'
-            } disabled:bg-gray-300 disabled:cursor-not-allowed`}
-          >
-            {isEditing ? '🔒 Lock Preview' : '✏️ Enable Editing'}
-          </button>
-          <button
-            onClick={handleRefresh}
-            disabled={!selectedFile}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
-            title="Refresh Preview"
-          >
-            🔄 Refresh
-          </button>
-        </div>
+      <div className="flex space-x-2">
+        <button
+          onClick={toggleEditMode}
+          disabled={!selectedFile}
+          className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+            isEditing
+              ? 'bg-green-500 text-white hover:bg-green-600'
+              : 'bg-blue-500 text-white hover:bg-blue-600'
+          } disabled:bg-gray-300 disabled:cursor-not-allowed`}
+        >
+          {isEditing ? '🔒 Lock Preview' : '✏️ Enable Editing'}
+        </button>
+        <button
+          onClick={handleRefresh}
+          disabled={!selectedFile}
+          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
+          title="Refresh Preview"
+        >
+          🔄 Refresh
+        </button>
       </div>
+    </div>
+
+      {/* Formatting Toolbar */}
+      {isEditing && selectedFile && (
+        <div className="flex items-center bg-gray-50 border-b border-gray-300 px-4 py-2 space-x-2">
+          <div className="text-sm text-gray-600 mr-2">格式</div>
+          <button onClick={() => applyHeading(1)} className="px-3 py-1 bg-white border rounded hover:bg-gray-100">H1</button>
+          <button onClick={() => applyHeading(2)} className="px-3 py-1 bg-white border rounded hover:bg-gray-100">H2</button>
+          <button onClick={applyParagraph} className="px-3 py-1 bg-white border rounded hover:bg-gray-100">段落</button>
+          <button onClick={insertBulletedList} className="px-3 py-1 bg-white border rounded hover:bg-gray-100">• 列表</button>
+          <button onClick={insertNumberedList} className="px-3 py-1 bg-white border rounded hover:bg-gray-100">1. 列表</button>
+          <button onClick={insertLink} className="px-3 py-1 bg-white border rounded hover:bg-gray-100">🔗 链接</button>
+          <button onClick={removeLink} className="px-3 py-1 bg-white border rounded hover:bg-gray-100">⛔ 取消链接</button>
+        </div>
+      )}
 
       {/* Editable Preview Area */}
       <div className="flex-1 overflow-auto bg-gray-50 p-4">
