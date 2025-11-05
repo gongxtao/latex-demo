@@ -1,0 +1,87 @@
+\documentclass[12pt,letterpaper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{tabularx}
+
+\geometry{
+    top=1in,
+    bottom=1in,
+    left=1in,
+    right=1in
+}
+
+\definecolor{invoiceblue}{RGB}{0,84,168}
+
+\begin{document}
+\noindent
+\begin{minipage}[t]{0.6\textwidth}
+    {\large [Company Name]}\\
+    [Company slogan]\\[1em]
+    [Street Address]\\
+    [City, ST ZIP Code]\\
+    Phone [Enter phone] | Fax [Enter fax]\\
+    [Email] | [Website]
+\end{minipage}%
+\begin{minipage}[t]{0.4\textwidth}
+    \raggedleft
+    {\Large\color{invoiceblue}\textbf{INVOICE}}\\[1em]
+    {\color{invoiceblue}\textbf{INVOICE \#} [Invoice No]}\\
+    {\color{invoiceblue}\textbf{DATE} [Enter date]}
+\end{minipage}
+
+\vspace{2em}
+
+\textbf{TO}\\
+[Name]\\
+[Company Name]\\
+[Street Address]\\
+[City, ST ZIP Code]\\
+Phone [Enter phone] | [Email]
+
+\vspace{1em}
+
+{\color{invoiceblue}\textbf{FOR} [Project or service description]}\\
+{\color{invoiceblue}\textbf{P.O. \#} [P.O. \#]}
+
+\vspace{1em}
+
+\begin{tabularx}{\textwidth}{X r}
+    \textcolor{invoiceblue}{\textbf{Description}} & \textcolor{invoiceblue}{\textbf{Amount}}\\
+    \hline
+    [Enter description 1] & [Enter amount]\\
+    [Enter description 2] & [Enter amount]\\
+    [Enter description 3] & [Enter amount]\\
+    [Enter description 4] & [Enter amount]\\
+    [Enter description 5] & [Enter amount]\\
+    [Enter description 6] & [Enter amount]\\
+    [Enter description 7] & [Enter amount]\\
+    [Enter description 8] & [Enter amount]\\
+    [Enter description 9] & [Enter amount]\\
+    [Enter description 10] & [Enter amount]\\
+    [Enter description 11] & [Enter amount]\\
+    [Enter description 12] & [Enter amount]\\
+    [Enter description 13] & [Enter amount]\\
+    [Enter description 14] & [Enter amount]\\
+    [Enter description 15] & [Enter amount]\\
+    [Enter description 16] & [Enter amount]\\
+    [Enter description 17] & [Enter amount]\\
+    \hline
+    \textcolor{invoiceblue}{\textbf{Total}} & [Enter total amount]
+\end{tabularx}
+
+\vspace{2em}
+
+Make all checks payable to [Company Name]\\
+Payment is due within 30 days.\\
+If you have any questions concerning this invoice, contact [Name] | [Phone] | [Email]
+
+\vspace{1em}
+\begin{center}
+    \textcolor{invoiceblue}{\textbf{THANK YOU FOR YOUR BUSINESS!}}
+\end{center}
+
+\end{document}

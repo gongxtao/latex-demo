@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zuraide Elorriaga - Resume</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .profile-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #cc0000;
+            margin-right: 15px;
+        }
+
+        .name {
+            color: #cc0000;
+            font-size: 2.5em;
+            font-weight: normal;
+            margin: 0;
+        }
+
+        .contact-info {
+            color: #cc0000;
+            margin-top: 5px;
+        }
+
+        .summary {
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        h2 {
+            color: #cc0000;
+            font-weight: normal;
+            margin-top: 30px;
+        }
+
+        .timeline {
+            position: relative;
+        }
+
+        .timeline-item {
+            margin-bottom: 20px;
+            position: relative;
+            padding-left: 25px;
+        }
+
+        .timeline-item::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 5px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #cc0000;
+        }
+
+        .date {
+            color: #cc0000;
+            font-weight: bold;
+        }
+
+        .position {
+            color: #cc0000;
+            font-weight: bold;
+        }
+
+        .skills-activities {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+
+        li::before {
+            content: "•";
+            color: #cc0000;
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="profile-icon"></div>
+        <div>
+            <h1 class="name">ZURAIDE ELORRIAGA</h1>
+            <div class="contact-info">Boston, MA | 916.555.6123 | zuraide@example.com | greatsiteaddress.com</div>
+        </div>
+    </div>
+
+    <div class="summary">
+        Licensed pharmacist with over 7 years of experience in retail and clinical pharmacy settings. Strong expertise in dispensing medications, providing patient counseling, and collaborating with healthcare providers to optimize patient care.
+    </div>
+
+    <h2>EXPERIENCE</h2>
+    <div class="timeline">
+        <div class="timeline-item">
+            <div class="date">JAN 20XX-AUG 20XX</div>
+            <div class="position">PHARMACIST, LAMIERE LABS</div>
+            <p>Dispense medications accurately and efficiently, ensuring compliance with state and federal laws. Provide patient education on medication therapy, side effects, and drug interactions.</p>
+        </div>
+
+        <div class="timeline-item">
+            <div class="date">MAR 20XX-JAN 20XX</div>
+            <div class="position">PHARMACIST, TREY RESEARCH</div>
+            <p>Coordinated with insurance companies to process claims and resolve issues. Trained and supervised pharmacy technicians in daily operations and customer service.</p>
+        </div>
+    </div>
+
+    <h2>EDUCATION</h2>
+    <div class="timeline">
+        <div class="timeline-item">
+            <div class="date">JUNE 20XX</div>
+            <div class="position">DOCTOR OF PHARMACY, JASPER UNIVERSITY</div>
+            <p>Received the Dean's List award for maintaining a high grade point average and academic excellence.</p>
+        </div>
+
+        <div class="timeline-item">
+            <div class="date">MAY 20XX</div>
+            <div class="position">BACHELOR OF SCIENCE IN BIOLOGY, BELLOWS COLLEGE</div>
+            <p>The student was recognized as the Most Outstanding Pharmacy Student of the Year.</p>
+        </div>
+    </div>
+
+    <div class="skills-activities">
+        <div>
+            <h2>SKILLS</h2>
+            <ul>
+                <li>Strong knowledge of medication therapy, drug interactions, and side effects</li>
+                <li>Excellent communication skills, both verbal and written</li>
+                <li>Attention to detail and accuracy in medication dispensing and record-keeping</li>
+                <li>Ability to collaborate effectively with healthcare providers and other team members</li>
+            </ul>
+        </div>
+        <div>
+            <h2>ACTIVITIES</h2>
+            <p>Active member of the National Association of Pharmacy Professionals (NAPP) and participated in various volunteer and networking events aimed at promoting the role of pharmacists in healthcare.</p>
+        </div>
+    </div>
+</body>
+</html>

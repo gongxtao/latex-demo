@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Template</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 8.5in;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        .header {
+            text-align: right;
+            margin-bottom: 30px;
+        }
+        .invoice-title {
+            color: #0066cc;
+            font-size: 32px;
+            font-weight: bold;
+        }
+        .company-info {
+            margin-bottom: 20px;
+        }
+        .invoice-details {
+            color: #0066cc;
+            margin-bottom: 20px;
+        }
+        .client-info {
+            margin-bottom: 30px;
+        }
+        .for-section {
+            color: #0066cc;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .items-table th {
+            color: #0066cc;
+            text-align: left;
+            padding: 8px;
+            border-bottom: 2px solid #ddd;
+        }
+        .items-table td {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+        .amount-column {
+            text-align: right;
+        }
+        .total-row {
+            font-weight: bold;
+            color: #0066cc;
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 0.9em;
+        }
+        .thank-you {
+            color: #0066cc;
+            text-align: center;
+            margin-top: 40px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="invoice-title">INVOICE</div>
+        <div class="company-info">
+            [Company slogan]<br>
+            [Street Address]<br>
+            [City, ST ZIP Code]<br>
+            Phone [Enter phone] | Fax [Enter fax]<br>
+            [Email] | [Website]
+        </div>
+    </div>
+
+    <div class="invoice-details">
+        INVOICE # [Invoice No]<br>
+        DATE [Enter date]
+    </div>
+
+    <div class="client-info">
+        <strong>TO</strong><br>
+        [Name]<br>
+        [Company Name]<br>
+        [Street Address]<br>
+        [City, ST ZIP Code]<br>
+        Phone [Enter phone] | [Email]
+    </div>
+
+    <div class="for-section">
+        FOR [Project or service description]<br>
+        P.O. # [P.O. #]
+    </div>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th class="amount-column">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- 17 rows of description and amount placeholders -->
+            <tr><td>[Enter description 1]</td><td class="amount-column">[Enter amount]</td></tr>
+            <!-- Repeat for rows 2-17 -->
+            <tr class="total-row">
+                <td>Total</td>
+                <td class="amount-column">[Enter total amount]</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="footer">
+        Make all checks payable to [Company Name]<br>
+        Payment is due within 30 days.<br>
+        If you have any questions concerning this invoice, contact [Name] | [Phone] | [Email]
+    </div>
+
+    <div class="thank-you">
+        THANK YOU FOR YOUR BUSINESS!
+    </div>
+</body>
+</html>

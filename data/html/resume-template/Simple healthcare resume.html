@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juliet Childres - General Practitioner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .profile-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .profile-image {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .name-title {
+            text-align: right;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .title {
+            font-size: 1.5em;
+            color: #666;
+        }
+
+        .contact {
+            text-align: right;
+            color: #666;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 40px;
+        }
+
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #333;
+            margin-bottom: 20px;
+            padding-bottom: 5px;
+        }
+
+        .work-experience div {
+            margin-bottom: 20px;
+        }
+
+        .job-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .date {
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .description {
+            color: #333;
+            line-height: 1.4;
+        }
+
+        .skills-list {
+            list-style-type: none;
+        }
+
+        .skills-list li {
+            margin-bottom: 10px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="profile-section">
+            <img src="profile-image.jpg" alt="Professional headshot" class="profile-image">
+        </div>
+        <div class="name-title">
+            <h1>Juliet Childres</h1>
+            <div class="title">GENERAL PRACTITIONER</div>
+            <div class="contact">
+                678-555-0103<br>
+                kai@lamnahealthcare.com
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <section class="work-experience">
+            <h2>WORK EXPERIENCE</h2>
+            <div>
+                <div class="job-title">Lamna Healthcare | General Practitioner</div>
+                <div class="date">December 20XX – present</div>
+                <div class="description">Implemented evidence-based medicine for accurate diagnosis, spearheaded a community health fair, providing free screenings to over 200 residents</div>
+            </div>
+            <div>
+                <div class="job-title">Tyler Stein MD | Family Physician</div>
+                <div class="date">August 20XX – July 20XX</div>
+                <div class="description">Managed a diverse patient caseload, led a smoking cessation program, resulting in a 30% increase in successful quit attempts</div>
+            </div>
+            <div>
+                <div class="job-title">City Hospital | Medical Officer</div>
+                <div class="date">April 20XX – August 20XX</div>
+                <div class="description">Provided emergency medical care with a focus on trauma cases, collaborated with specialists to enhance patient outcomes</div>
+            </div>
+        </section>
+
+        <section class="education-skills">
+            <h2>EDUCATION</h2>
+            <div>
+                <div class="job-title">Jasper University</div>
+                <div class="date">September 20XX – June 20XX</div>
+                <div class="description">Dean's List, Medical Research Award</div>
+            </div>
+            <div>
+                <div class="job-title">Bellows College</div>
+                <div class="date">September 20XX – May 20XX</div>
+                <div class="description">Bachelor of Science in Biology, Cum Laude, outstanding research thesis outcomes</div>
+            </div>
+
+            <h2>SKILLS</h2>
+            <ul class="skills-list">
+                <li>Clinical diagnosis</li>
+                <li>Patient-centered care</li>
+                <li>Health promotion</li>
+                <li>Chronic disease management</li>
+            </ul>
+        </section>
+    </div>
+</body>
+</html>

@@ -1,0 +1,94 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+
+\geometry{
+    letterpaper,
+    left=1in,
+    right=1in,
+    top=1in,
+    bottom=1in
+}
+
+\begin{document}
+
+\begin{minipage}{\textwidth}
+    \begin{flushright}
+        {\Large\textbf{INVOICE}}
+        
+        \vspace{0.5em}
+        {\large\textbf{Fish Friends}}
+        \small{Life in the fishbowl}
+        
+        12 3rd St, Boston, MA 23456\\
+        Phone (123) 456-7890\\
+        Fax (123) 456-7891
+        
+        \vspace{0.5em}
+        INVOICE \#100\\
+        DATE: 9/14/23
+    \end{flushright}
+\end{minipage}
+
+\vspace{1em}
+
+\begin{minipage}{0.48\textwidth}
+    \textbf{BILL TO:}\\
+    Quinn Campbell\\
+    Downtown Pets\\
+    321 Sycamore\\
+    Albany, NY 54321\\
+    (123) 789-0123
+\end{minipage}
+\begin{minipage}{0.48\textwidth}
+    \textbf{SHIP TO:}\\
+    Quinn Campbell\\
+    Downtown Pets\\
+    321 Sycamore\\
+    Albany, NY 54321\\
+    (123) 789-0123
+\end{minipage}
+
+\vspace{1em}
+\textbf{COMMENTS OR SPECIAL INSTRUCTIONS:}\\
+Live animals - handle with care
+
+\vspace{1em}
+\begin{tabular}{|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|}
+\hline
+SALESPERSON & P.O. NUMBER & REQUISITIONER & SHIPPED VIA & F.O.B. POINT & TERMS\\
+\hline
+Diego Sagese & 789 & Jens Martensson & Air express & Warehouse & Due on receipt\\
+\hline
+\end{tabular}
+
+\vspace{1em}
+\begin{tabular}{|p{2cm}|p{9cm}|r|r|}
+\hline
+QUANTITY & DESCRIPTION & UNIT PRICE & TOTAL\\
+\hline
+10 & Exotic fish & 65.00 & 650.00\\
+100 & Standard goldfish & 3.00 & 300.00\\
+\hline
+\multicolumn{2}{r}{} & SUBTOTAL & 950.00\\
+\multicolumn{2}{r}{} & SALES TAX & 47.50\\
+\multicolumn{2}{r}{} & SHIPPING \& HANDLING & 24.99\\
+\cline{3-4}
+\multicolumn{2}{r}{} & TOTAL DUE & 1022.49\\
+\end{tabular}
+
+\vspace{2em}
+Make all checks payable to Fish Friends.\\
+If you have any questions concerning this invoice, contact: Diego at (123) 456-7890 or fish@example.com.
+
+\vspace{2em}
+\begin{center}
+    THANK YOU FOR YOUR BUSINESS!
+\end{center}
+
+\end{document}

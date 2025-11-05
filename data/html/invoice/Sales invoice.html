@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fish Friends Invoice</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .company-name {
+            font-size: 24px;
+            color: #333;
+        }
+        .tagline {
+            font-style: italic;
+            color: #666;
+        }
+        .invoice-details {
+            text-align: right;
+        }
+        .address-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .address-block {
+            width: 45%;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f8f8;
+        }
+        .totals {
+            width: 300px;
+            margin-left: auto;
+        }
+        .totals td {
+            text-align: right;
+        }
+        .special-instructions {
+            margin: 20px 0;
+            font-style: italic;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <div class="company-name">Fish Friends</div>
+            <div class="tagline">Life in the fishbowl</div>
+            <div>12 3rd St, Boston, MA 23456</div>
+            <div>Phone (123) 456-7890</div>
+            <div>Fax (123) 456-7891</div>
+        </div>
+        <div class="invoice-details">
+            <h1>INVOICE</h1>
+            <div>INVOICE #100</div>
+            <div>DATE: 9/14/23</div>
+        </div>
+    </div>
+
+    <div class="address-section">
+        <div class="address-block">
+            <strong>BILL TO:</strong><br>
+            Quinn Campbell<br>
+            Downtown Pets<br>
+            321 Sycamore<br>
+            Albany, NY 54321<br>
+            (123) 789-0123
+        </div>
+        <div class="address-block">
+            <strong>SHIP TO:</strong><br>
+            Quinn Campbell<br>
+            Downtown Pets<br>
+            321 Sycamore<br>
+            Albany, NY 54321<br>
+            (123) 789-0123
+        </div>
+    </div>
+
+    <div class="special-instructions">
+        <strong>COMMENTS OR SPECIAL INSTRUCTIONS:</strong><br>
+        Live animals - handle with care
+    </div>
+
+    <table>
+        <tr>
+            <th>SALESPERSON</th>
+            <th>P.O. NUMBER</th>
+            <th>REQUISITIONER</th>
+            <th>SHIPPED VIA</th>
+            <th>F.O.B. POINT</th>
+            <th>TERMS</th>
+        </tr>
+        <tr>
+            <td>Diego Sagese</td>
+            <td>789</td>
+            <td>Jens Martensson</td>
+            <td>Air express</td>
+            <td>Warehouse</td>
+            <td>Due on receipt</td>
+        </tr>
+    </table>
+
+    <table>
+        <tr>
+            <th>QUANTITY</th>
+            <th>DESCRIPTION</th>
+            <th>UNIT PRICE</th>
+            <th>TOTAL</th>
+        </tr>
+        <tr>
+            <td>10</td>
+            <td>Exotic fish</td>
+            <td>65.00</td>
+            <td>650.00</td>
+        </tr>
+        <tr>
+            <td>100</td>
+            <td>Standard goldfish</td>
+            <td>3.00</td>
+            <td>300.00</td>
+        </tr>
+    </table>
+
+    <table class="totals">
+        <tr>
+            <td>SUBTOTAL</td>
+            <td>950.00</td>
+        </tr>
+        <tr>
+            <td>SALES TAX</td>
+            <td>47.50</td>
+        </tr>
+        <tr>
+            <td>SHIPPING & HANDLING</td>
+            <td>24.99</td>
+        </tr>
+        <tr>
+            <td><strong>TOTAL DUE</strong></td>
+            <td><strong>1022.49</strong></td>
+        </tr>
+    </table>
+
+    <div class="footer">
+        <p>Make all checks payable to Fish Friends.</p>
+        <p>If you have any questions concerning this invoice, contact: Diego at (123) 456-7890 or fish@example.com.</p>
+        <p><strong>THANK YOU FOR YOUR BUSINESS!</strong></p>
+    </div>
+</body>
+</html>

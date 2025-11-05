@@ -1,0 +1,99 @@
+\documentclass[12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{tabularx}
+
+\definecolor{invoicered}{RGB}{255,99,99}
+
+\geometry{
+    paper=letterpaper,
+    margin=0.75in
+}
+
+\begin{document}
+
+\begin{minipage}[t]{0.2\textwidth}
+    \textbf{LOGO}
+\end{minipage}
+\begin{minipage}[t]{0.6\textwidth}
+    \centering
+    {\Large\textbf{Invoice [0000]}}
+\end{minipage}
+\begin{minipage}[t]{0.2\textwidth}
+    \raggedleft
+    {\color{invoicered}[Company]}\\
+    {\color{invoicered}[Street Address, City, ST ZIP Code]}
+\end{minipage}
+
+\vspace{1cm}
+
+\begin{minipage}[t]{0.33\textwidth}
+    {\color{invoicered}Date}\\
+    Date
+\end{minipage}
+\begin{minipage}[t]{0.33\textwidth}
+    {\color{invoicered}To}\\
+    [Name]\\
+    [Address]\\
+    [City, ST ZIP Code]
+\end{minipage}
+\begin{minipage}[t]{0.33\textwidth}
+    {\color{invoicered}Ship To}\\
+    Same as recipient
+\end{minipage}
+
+\vspace{0.5cm}
+
+{\color{invoicered}Instructions}\\
+[Add additional instructions]
+
+\vspace{0.5cm}
+
+\begin{tabular}{|>{\color{white}}p{2cm}|>{\color{white}}p{8cm}|>{\color{white}}p{2cm}|>{\color{white}}p{2cm}|}
+\hline
+\rowcolor{invoicered}
+Quantity & Description & Unit Price & Total \\
+\hline
+& & & \\
+\hline
+& & & \\
+\hline
+& & & \\
+\hline
+& & & \\
+\hline
+& & & \\
+\hline
+\end{tabular}
+
+\vspace{0.5cm}
+
+\begin{flushright}
+Subtotal\\
+Sales Tax\\
+Shipping \& Handling\\
+\textbf{Total Due By Date}
+\end{flushright}
+
+\vspace{1cm}
+
+{\color{invoicered}Thank you for your business!}
+
+\vfill
+
+\begin{tabular}{ll ll}
+{\color{invoicered}Tel:} [Telephone] & {\color{invoicered}Email:} [Email] \\
+{\color{invoicered}Fax:} [Fax] & {\color{invoicered}Web:} [Web address]
+\end{tabular}
+
+\vspace{0.5cm}
+\begin{flushright}
+{\color{invoicered}Page: 2 of 2}
+\end{flushright}
+
+\end{document}

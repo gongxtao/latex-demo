@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Meeting</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        
+        .meeting-container {
+            margin-bottom: 40px;
+        }
+        
+        .red { color: #cc4125; }
+        .green { color: #5a6c32; }
+        .blue { color: #324b6c; }
+        
+        h1 {
+            font-size: 24px;
+            border-bottom: 2px solid;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .label {
+            font-weight: bold;
+            min-width: 120px;
+        }
+        
+        .agenda-items {
+            margin: 20px 0;
+        }
+        
+        .agenda-grid {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            font-size: 18px;
+            margin: 20px 0 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="meeting-container red">
+        <h1>team meeting</h1>
+        <div class="grid">
+            <div class="label">Date:</div>
+            <div>1/5</div>
+            <div class="label">Time:</div>
+            <div>3:00 PM</div>
+            <div class="label">Location:</div>
+            <div>Conference room 3</div>
+            <div class="label">Meeting called by:</div>
+            <div>Rene Stokes</div>
+            <div class="label">Type of meeting:</div>
+            <div>Team decision</div>
+            <div class="label">Facilitator:</div>
+            <div>Rene Stokes</div>
+            <div class="label">Please read:</div>
+            <div>Email attachments</div>
+            <div class="label">Note taker:</div>
+            <div>Luca Urbina</div>
+            <div class="label">Please bring:</div>
+            <div>Committee reports</div>
+            <div class="label">Timekeeper:</div>
+            <div>Viktor Kolacour</div>
+            <div class="label">Attendees:</div>
+            <div>Luca Urbina, Gael Torres, Viktor Kolacour, Rene Stokes, Mikaela Lee</div>
+        </div>
+
+        <h2>Agenda Items</h2>
+        <div class="agenda-grid">
+            <div>Topic</div>
+            <div>Presenter</div>
+            <div>Time allotted</div>
+            <div>Intro</div>
+            <div>Rene Stokes</div>
+            <div>5 min</div>
+            <div>Brainstorm</div>
+            <div>Rene Stokes</div>
+            <div>15 min</div>
+            <div>Discussion</div>
+            <div>Viktor Kolacour</div>
+            <div>15 min</div>
+            <div>Vote</div>
+            <div>Mikaela Lee</div>
+            <div>10 min</div>
+        </div>
+
+        <h2>Other Information</h2>
+        <div>
+            <div class="label">Resources:</div>
+            <div>User research, field studies, customer surveys</div>
+            <div class="label">Special notes:</div>
+            <div>Next meeting 2/8 @ 3 PM</div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,55 @@
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{tabularx}
+
+\geometry{margin=1in}
+
+% Define custom colors
+\definecolor{orangeheader}{RGB}{200,80,20}
+\definecolor{greenheader}{RGB}{110,130,40}
+\definecolor{blueheader}{RGB}{60,90,140}
+
+\begin{document}
+
+% First meeting (Orange version)
+{\color{orangeheader}
+\huge\textbf{team meeting}
+\normalsize
+
+\vspace{0.5cm}
+\begin{tabular}{@{}ll@{\hspace{2cm}}ll@{}}
+Date: 1/5 & Time: 3:00 PM & Location: Conference room 3 \\[0.3cm]
+Meeting called by: & Rene Steko & Type of meeting: & Team decision \\
+Facilitator: & Rene Steko & Please read: & Email attachments \\
+Note taker: & Luca Uhlirz & Please bring: & Committee reports \\
+Timekeeper: & Viktor Klobučar & & \\
+Attendees: & \multicolumn{3}{l}{Luca Uhlirz, Gael Torres, Viktor Klobučar, Rene Steko, Mikaela Lee}
+\end{tabular}
+
+\vspace{0.5cm}
+\textbf{Agenda Items}
+
+\begin{tabular}{@{}lll@{}}
+Topic & Presenter & Time allotted \\
+Intro & Rene Steko & 5 min \\
+Brainstorm & Rene Steko & 15 min \\
+Discussion & Viktor Klobučar & 15 min \\
+Vote & Mikaela Lee & 10 min
+\end{tabular}
+
+\vspace{0.5cm}
+\textbf{Other Information}
+
+Resources: User research, field studies, customer surveys\\
+Special notes: Next meeting 2/9 @ 3 PM
+}
+
+% Similar blocks would follow for green and blue versions
+% with identical content but different header colors
+
+\end{document}

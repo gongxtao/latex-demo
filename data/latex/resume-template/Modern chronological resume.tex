@@ -1,0 +1,97 @@
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+\geometry{margin=1in}
+
+\definecolor{customred}{RGB}{180,0,0}
+
+\begin{document}
+
+\pagestyle{empty}
+
+% Header with name and icon
+\begin{tikzpicture}[remember picture,overlay]
+\node[anchor=north east] at (current page.north east) {%
+    \begin{minipage}{0.95\textwidth}
+    \begin{flushright}
+    \tikz\node[circle,draw=customred,inner sep=10pt] {\includegraphics[width=20pt]{profile}};\hspace{1em}
+    {\Huge\color{customred}\textbf{ZURAIDE}\\\textbf{ELORRIAGA}}
+    
+    \medskip
+    Boston, MA | 916.555.6123 | zuraide@example.com | greatsiteaddress.com
+    \end{flushright}
+    \end{minipage}
+};
+\end{tikzpicture}
+
+\vspace{2cm}
+
+\noindent Licensed pharmacist with over 7 years of experience in retail and clinical pharmacy settings. Strong expertise in dispensing medications, providing patient counseling, and collaborating with healthcare providers to optimize patient care.
+
+\vspace{0.5cm}
+
+{\color{customred}\Large\textbf{EXPERIENCE}}
+
+\medskip
+
+\noindent\textcolor{customred}{JAN 20XX-}\hspace{1em}\textbf{PHARMACIST, LAMIERE LABS}\\
+\textcolor{customred}{AUG 20XX}
+\begin{itemize}[leftmargin=1.5cm]
+\item Dispense medications accurately and efficiently, ensuring compliance with state and federal laws.
+\item Provide patient education on medication therapy, side effects, and drug interactions.
+\end{itemize}
+
+\medskip
+
+\noindent\textcolor{customred}{MAR 20XX-}\hspace{1em}\textbf{PHARMACIST, TREY RESEARCH}\\
+\textcolor{customred}{JAN 20XX}
+\begin{itemize}[leftmargin=1.5cm]
+\item Coordinated with insurance companies to process claims and resolve issues.
+\item Trained and supervised pharmacy technicians in daily operations and customer service.
+\end{itemize}
+
+\vspace{0.5cm}
+
+{\color{customred}\Large\textbf{EDUCATION}}
+
+\medskip
+
+\noindent\textcolor{customred}{JUNE 20XX}\hspace{1em}\textbf{DOCTOR OF PHARMACY, JASPER UNIVERSITY}
+\begin{itemize}[leftmargin=1.5cm]
+\item Received the Dean's List award for maintaining a high grade point average and academic excellence.
+\end{itemize}
+
+\medskip
+
+\noindent\textcolor{customred}{MAY 20XX}\hspace{1em}\textbf{BACHELOR OF SCIENCE IN BIOLOGY, BELLOWS COLLEGE}
+\begin{itemize}[leftmargin=1.5cm]
+\item The student was recognized as the Most Outstanding Pharmacy Student of the Year.
+\end{itemize}
+
+\vspace{0.5cm}
+
+\begin{minipage}[t]{0.45\textwidth}
+{\color{customred}\Large\textbf{SKILLS}}
+
+\begin{itemize}
+\item Strong knowledge of medication therapy, drug interactions, and side effects
+\item Excellent communication skills, both verbal and written
+\item Attention to detail and accuracy in medication dispensing and record-keeping
+\item Ability to collaborate effectively with healthcare providers and other team members
+\end{itemize}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.45\textwidth}
+{\color{customred}\Large\textbf{ACTIVITIES}}
+
+Active member of the National Association of Pharmacy Professionals (NAPP) and participated in various volunteer and networking events aimed at promoting the role of pharmacists in healthcare.
+\end{minipage}
+
+\end{document}
