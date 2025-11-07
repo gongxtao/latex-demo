@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import EditorToolbar from './EditorToolbar'
 
 interface EditablePreviewProps {
   selectedFile: string | null
@@ -37,17 +38,17 @@ export default function EditablePreview({ selectedFile, content, onContentChange
   // Helper function to get node from path
   const getNodeFromPath = (path: number[], root: Node): Node | null => {
     let current: Node | null = root
-    
+
     for (const index of path) {
       if (!current || !current.childNodes[index]) return null
       current = current.childNodes[index]
     }
-    
+
     return current
   }
 
   // Save selection before update
-  const saveSelection = (iframeDoc: Document) => {
+  const saveSelection = useCallback((iframeDoc: Document) => {
     const selection = iframeDoc.getSelection()
     if (!selection || selection.rangeCount === 0) {
       selectionRef.current = null
@@ -61,10 +62,10 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       endPath: getNodePath(range.endContainer),
       endOffset: range.endOffset
     }
-  }
+  }, [])
 
   // Restore selection after update
-  const restoreSelection = (iframeDoc: Document) => {
+  const restoreSelection = useCallback((iframeDoc: Document) => {
     if (!selectionRef.current) return
 
     try {
@@ -78,10 +79,10 @@ export default function EditablePreview({ selectedFile, content, onContentChange
         const range = iframeDoc.createRange()
         range.setStart(startNode, Math.min(selectionRef.current.startOffset, startNode.textContent?.length || 0))
         range.setEnd(endNode, Math.min(selectionRef.current.endOffset, endNode.textContent?.length || 0))
-        
+
         selection.removeAllRanges()
         selection.addRange(range)
-        
+
         // Keep focus
         if (iframeDoc.body) {
           iframeDoc.body.focus()
@@ -91,9 +92,20 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       // If restoration fails, just continue
       console.warn('Failed to restore selection:', e)
     }
-  }
+  }, [])
 
-  // Setup editable iframe when content loads
+  const handleInput = useCallback(() => {
+    if (isUpdatingRef.current) return
+    isUpdatingRef.current = true
+    const iframeDoc = iframeRef.current?.contentDocument
+    if (!iframeDoc) return
+    const newHtml = iframeDoc.documentElement.outerHTML
+    onContentChange(newHtml)
+    setTimeout(() => {
+      isUpdatingRef.current = false
+    }, 50)
+  }, [onContentChange])
+
   useEffect(() => {
     if (!iframeRef.current || !content) return
     if (isUpdatingRef.current) return // Prevent recursive updates
@@ -110,7 +122,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
         x: iframeDoc.documentElement.scrollLeft || iframeDoc.body.scrollLeft,
         y: iframeDoc.documentElement.scrollTop || iframeDoc.body.scrollTop
       }
-      
+
       // Save selection
       saveSelection(iframeDoc)
     }
@@ -129,7 +141,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
           iframeDoc.documentElement.scrollTop = scrollPositionRef.current.y
           iframeDoc.body.scrollLeft = scrollPositionRef.current.x
           iframeDoc.body.scrollTop = scrollPositionRef.current.y
-          
+
           // Restore selection if editing
           if (isEditing) {
             restoreSelection(iframeDoc)
@@ -145,7 +157,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       if (iframeDoc.body) {
         iframeDoc.body.contentEditable = 'true'
         iframeDoc.body.style.outline = 'none'
-        
+
         // Add editing styles
         const style = iframeDoc.createElement('style')
         style.textContent = `
@@ -162,22 +174,8 @@ export default function EditablePreview({ selectedFile, content, onContentChange
         `
         iframeDoc.head.appendChild(style)
 
-        // Listen for changes
-        const handleInput = () => {
-          if (isUpdatingRef.current) return
-          
-          isUpdatingRef.current = true
-          const newHtml = iframeDoc.documentElement.outerHTML
-          onContentChange(newHtml)
-          
-          // Reset flag after a short delay
-          setTimeout(() => {
-            isUpdatingRef.current = false
-          }, 50)
-        }
-
         iframeDoc.body.addEventListener('input', handleInput)
-        
+
         return () => {
           iframeDoc.body.removeEventListener('input', handleInput)
         }
@@ -188,9 +186,18 @@ export default function EditablePreview({ selectedFile, content, onContentChange
         iframeDoc.body.contentEditable = 'false'
       }
     }
-  }, [content, isEditing, onContentChange, previewKey])
+  }, [content, isEditing, handleInput])
 
   const toggleEditMode = () => {
+    // If we're exiting edit mode, sync the latest content first
+    if (isEditing) {
+      const iframe = iframeRef.current
+      const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document
+      if (iframeDoc) {
+        const latestHtml = iframeDoc.documentElement.outerHTML
+        onContentChange(latestHtml)
+      }
+    }
     setIsEditing(!isEditing)
     setPreviewKey(prev => prev + 1)
   }
@@ -198,39 +205,6 @@ export default function EditablePreview({ selectedFile, content, onContentChange
   const handleRefresh = () => {
     setPreviewKey(prev => prev + 1)
   }
-
-  // Formatting helpers
-  const getIframeDoc = () => iframeRef.current?.contentDocument || iframeRef.current?.contentWindow?.document || null
-
-  const applyFormat = (fn: (doc: Document) => void) => {
-    const doc = getIframeDoc()
-    if (!doc || !isEditing) return
-    fn(doc)
-    isUpdatingRef.current = true
-    const newHtml = doc.documentElement.outerHTML
-    onContentChange(newHtml)
-    setTimeout(() => {
-      isUpdatingRef.current = false
-    }, 50)
-  }
-
-  const applyHeading = (level: number) => applyFormat(doc => doc.execCommand('formatBlock', false, `h${level}`))
-  const applyParagraph = () => applyFormat(doc => doc.execCommand('formatBlock', false, 'p'))
-  const insertBulletedList = () => applyFormat(doc => doc.execCommand('insertUnorderedList'))
-  const insertNumberedList = () => applyFormat(doc => doc.execCommand('insertOrderedList'))
-  const insertLink = () => {
-    const url = typeof window !== 'undefined' ? window.prompt('请输入链接地址') : null
-    if (!url) return
-    applyFormat(doc => {
-      const sel = doc.getSelection()
-      if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
-        doc.execCommand('createLink', false, url)
-      } else {
-        doc.execCommand('insertHTML', false, `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`) 
-      }
-    })
-  }
-  const removeLink = () => applyFormat(doc => doc.execCommand('unlink'))
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -273,19 +247,13 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       </div>
     </div>
 
-      {/* Formatting Toolbar */}
-      {isEditing && selectedFile && (
-        <div className="flex items-center bg-gray-50 border-b border-gray-300 px-4 py-2 space-x-2">
-          <div className="text-sm text-gray-600 mr-2">格式</div>
-          <button onClick={() => applyHeading(1)} className="px-3 py-1 bg-white border rounded hover:bg-gray-100">H1</button>
-          <button onClick={() => applyHeading(2)} className="px-3 py-1 bg-white border rounded hover:bg-gray-100">H2</button>
-          <button onClick={applyParagraph} className="px-3 py-1 bg-white border rounded hover:bg-gray-100">段落</button>
-          <button onClick={insertBulletedList} className="px-3 py-1 bg-white border rounded hover:bg-gray-100">• 列表</button>
-          <button onClick={insertNumberedList} className="px-3 py-1 bg-white border rounded hover:bg-gray-100">1. 列表</button>
-          <button onClick={insertLink} className="px-3 py-1 bg-white border rounded hover:bg-gray-100">🔗 链接</button>
-          <button onClick={removeLink} className="px-3 py-1 bg-white border rounded hover:bg-gray-100">⛔ 取消链接</button>
-        </div>
-      )}
+      {/* EditorToolbar with minimal props */}
+      <EditorToolbar
+        iframeRef={iframeRef}
+        onContentChange={onContentChange}
+        isEditing={!!selectedFile && isEditing}
+        disabled={!selectedFile}
+      />
 
       {/* Editable Preview Area */}
       <div className="flex-1 overflow-auto bg-gray-50 p-4">
@@ -319,8 +287,9 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       {isEditing && selectedFile && (
         <div className="bg-blue-50 border-t border-blue-200 px-4 py-2">
           <p className="text-sm text-blue-800">
-            💡 <strong>Tip:</strong> Click anywhere in the preview to edit text directly. 
-            Click "Lock Preview" when done editing, then save your changes.
+            💡 <strong>Tip:</strong> Click anywhere in the preview to edit text directly.
+            Use the toolbar to format text, add links, images, and tables.
+            Click &quot;Lock Preview&quot; when done editing, then save your changes.
           </p>
         </div>
       )}

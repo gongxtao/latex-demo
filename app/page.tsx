@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import FileSelector from '@/components/FileSelector'
 import ChatBox from '@/components/ChatBox'
-import EditablePreview from '@/components/EditablePreview'
+import EditablePreview from '@/components/editor/EditablePreview'
 
 interface Message {
   role: 'user' | 'assistant'
