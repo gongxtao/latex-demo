@@ -25,6 +25,7 @@ import {
 import ColorPicker from './toolbar/ColorPicker';
 import BackgroundColorPicker from './toolbar/BackgroundColorPicker';
 import TablePicker from './toolbar/TablePicker';
+import ImagePicker from './toolbar/ImagePicker';
 
 /**
  * Props for the EditorToolbar component
@@ -145,10 +146,14 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ iframeRef, onContentChang
     const s = map[sizeLabel] || 3;
     applyFormat(doc => doc.execCommand('fontSize', false, String(s)));
   };
-  const insertImageByUrl = () => {
-    const url = typeof window !== 'undefined' ? window.prompt('Enter image URL') : null;
-    if (!url) return;
-    applyFormat(doc => doc.execCommand('insertImage', false, url));
+  const insertImage = (imageUrl: string) => {
+    applyFormat(doc => {
+      doc.execCommand('insertImage', false, imageUrl);
+      // Trigger input event to notify content changed
+      setTimeout(() => {
+        doc.body?.dispatchEvent(new Event('input', { bubbles: true }));
+      }, 10);
+    });
   };
   const insertBasicTable = (rows: number = 2, cols: number = 2) => {
     let html = '<table style="border-collapse: collapse; width: 100%;"><tbody>';
@@ -364,9 +369,10 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ iframeRef, onContentChang
           <ToolbarButton title="Insert link" onClick={insertLink} disabled={isDisabled}>
             <LinkIcon />
           </ToolbarButton>
-          <ToolbarButton title="Insert image" onClick={insertImageByUrl} disabled={isDisabled}>
-            <ImageIcon />
-          </ToolbarButton>
+          <ImagePicker
+            onImageSelect={insertImage}
+            disabled={isDisabled}
+          />
           <TablePicker
             onTableSelect={(rows, cols) => insertBasicTable(rows, cols)}
             disabled={isDisabled}

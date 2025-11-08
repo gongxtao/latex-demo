@@ -18,12 +18,13 @@ export default function EditablePreview({ selectedFile, content, onContentChange
   const isInitialLoadRef = useRef(true)
   const selectionRef = useRef<{ startPath: number[], startOffset: number, endPath: number[], endOffset: number } | null>(null)
   const isUpdatingRef = useRef(false)
+  const globalClickHandlerRef = useRef<((e: MouseEvent) => void) | null>(null)
 
   // Helper function to get node path
   const getNodePath = (node: Node): number[] => {
     const path: number[] = []
     let current: Node | null = node
-    
+
     while (current && current.parentNode) {
       const parent = current.parentNode as Node
       const index = Array.from(parent.childNodes).indexOf(current as ChildNode)
@@ -31,7 +32,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       current = parent
       if (current === iframeRef.current?.contentDocument?.body) break
     }
-    
+
     return path
   }
 
@@ -94,6 +95,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     }
   }, [])
 
+  // Handle input changes
   const handleInput = useCallback(() => {
     if (isUpdatingRef.current) return
     isUpdatingRef.current = true
@@ -105,6 +107,167 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       isUpdatingRef.current = false
     }, 50)
   }, [onContentChange])
+
+  // Image resize functionality
+  const addImageResizer = (iframeDoc: Document) => {
+    const images = iframeDoc.querySelectorAll('img')
+
+    images.forEach((img) => {
+      // Mark as initialized to prevent double-wrapping
+      if (img.hasAttribute('data-image-resizer')) {
+        return
+      }
+      img.setAttribute('data-image-resizer', 'true')
+
+      // Create container
+      const container = iframeDoc.createElement('div')
+      container.className = 'image-container'
+      container.style.position = 'relative'
+      container.style.display = 'inline-block'
+      container.style.lineHeight = '0'
+
+      img.parentNode?.insertBefore(container, img)
+      container.appendChild(img)
+      img.style.display = 'block'
+
+      // Create handles
+      const handles = {
+        tl: iframeDoc.createElement('div'),
+        tr: iframeDoc.createElement('div'),
+        bl: iframeDoc.createElement('div'),
+        br: iframeDoc.createElement('div')
+      }
+
+      Object.values(handles).forEach(handle => {
+        handle.className = 'image-resize-handle'
+        handle.style.cssText = `
+          position: absolute;
+          width: 12px;
+          height: 12px;
+          background: #3b82f6;
+          border: 2px solid white;
+          border-radius: 50%;
+          z-index: 10000;
+          pointer-events: auto;
+          display: none;
+          box-shadow: 0 0 3px rgba(0,0,0,0.5);
+        `
+        container.appendChild(handle)
+      })
+
+      // Position handles
+      const positionHandles = () => {
+        handles.tl.style.left = '-6px'
+        handles.tl.style.top = '-6px'
+        handles.tl.style.cursor = 'nw-resize'
+
+        handles.tr.style.left = `${img.offsetWidth - 6}px`
+        handles.tr.style.top = '-6px'
+        handles.tr.style.cursor = 'ne-resize'
+
+        handles.bl.style.left = '-6px'
+        handles.bl.style.top = `${img.offsetHeight - 6}px`
+        handles.bl.style.cursor = 'sw-resize'
+
+        handles.br.style.left = `${img.offsetWidth - 6}px`
+        handles.br.style.top = `${img.offsetHeight - 6}px`
+        handles.br.style.cursor = 'se-resize'
+      }
+
+      // Dragging
+      let isDragging = false
+      let startX = 0
+      let startY = 0
+      let startLeft = 0
+      let startTop = 0
+      let hasMoved = false
+
+      img.addEventListener('mousedown', (e: MouseEvent) => {
+        if (Object.values(handles).includes(e.target as any)) return
+
+        e.preventDefault()
+        e.stopPropagation()
+
+        // Hide all handles first
+        const allHandles = iframeDoc.querySelectorAll('.image-resize-handle')
+        allHandles.forEach(h => (h as HTMLElement).style.display = 'none')
+
+        // Show handles for this image
+        showHandles()
+
+        isDragging = true
+        hasMoved = false
+        startX = e.clientX
+        startY = e.clientY
+        startLeft = container.offsetLeft
+        startTop = container.offsetTop
+
+        const onMouseMove = (e: MouseEvent) => {
+          if (!isDragging) return
+
+          const dx = e.clientX - startX
+          const dy = e.clientY - startY
+
+          // Only change to absolute and start moving after moved more than 3px
+          if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+            hasMoved = true
+            if (container.style.position !== 'absolute') {
+              container.style.position = 'absolute'
+              container.style.zIndex = '9999'
+            }
+            container.style.left = `${startLeft + dx}px`
+            container.style.top = `${startTop + dy}px`
+          }
+        }
+
+        const onMouseUp = () => {
+          isDragging = false
+          iframeDoc.removeEventListener('mousemove', onMouseMove)
+          iframeDoc.removeEventListener('mouseup', onMouseUp)
+        }
+
+        iframeDoc.addEventListener('mousemove', onMouseMove)
+        iframeDoc.addEventListener('mouseup', onMouseUp)
+      })
+
+      // Function to show handles
+      const showHandles = () => {
+        positionHandles()
+        Object.values(handles).forEach(h => h.style.display = 'block')
+      }
+
+      // Resize
+      Object.entries(handles).forEach(([corner, handle]) => {
+        handle.addEventListener('mousedown', (e: MouseEvent) => {
+          e.stopPropagation()
+          e.preventDefault()
+
+          const startX = e.clientX
+          const startWidth = img.offsetWidth
+          const ratio = startWidth / img.offsetHeight
+
+          const onMouseMove = (e: MouseEvent) => {
+            const dx = e.clientX - startX
+            const newWidth = Math.max(20, startWidth + dx)
+            const newHeight = newWidth / ratio
+
+            img.style.width = `${newWidth}px`
+            img.style.height = `${newHeight}px`
+            positionHandles()
+          }
+
+          const onMouseUp = () => {
+            iframeDoc.removeEventListener('mousemove', onMouseMove)
+            iframeDoc.removeEventListener('mouseup', onMouseUp)
+          }
+
+          iframeDoc.addEventListener('mousemove', onMouseMove)
+          iframeDoc.addEventListener('mouseup', onMouseUp)
+        })
+      })
+    })
+
+  }
 
   useEffect(() => {
     if (!iframeRef.current || !content) return
@@ -131,6 +294,194 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     iframeDoc.open()
     iframeDoc.write(content)
     iframeDoc.close()
+
+    // Add image resize handles after content is rendered
+    const initImageResizer = () => {
+      addImageResizer(iframeDoc)
+    }
+
+    setTimeout(initImageResizer, 50)
+
+    // Create global click handler and store reference for cleanup
+    // Use event delegation at document level
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+
+      // Don't prevent event propagation - let image clicks work normally
+      // Check if clicked on an image with resizer
+      if (target.tagName === 'IMG' && target.hasAttribute('data-image-resizer')) {
+        return
+      }
+
+      // Check if clicked on a handle
+      if (target.classList && target.classList.contains('image-resize-handle')) {
+        return
+      }
+
+      // Check if clicked on container
+      if (target.classList && target.classList.contains('image-container')) {
+        return
+      }
+
+      // Clicked outside - hide all visible handles
+      const visibleHandles = iframeDoc.querySelectorAll('.image-resize-handle[style*="block"], .image-resize-handle:not([style*="none"])')
+      visibleHandles.forEach(handle => {
+        (handle as HTMLElement).style.display = 'none'
+      })
+    }
+
+    // Store reference for cleanup
+    globalClickHandlerRef.current = handleGlobalClick
+
+    // Add without event capture to let other events work normally
+    setTimeout(() => {
+      iframeDoc.addEventListener('click', handleGlobalClick, false)
+    }, 100)
+
+    // Add paste event handler for Ctrl+V image insertion
+    const handlePaste = (e: ClipboardEvent) => {
+      if (!isEditing) return
+
+      const items = Array.from(e.clipboardData?.items || [])
+      const imageItem = items.find(item => item.type.startsWith('image/'))
+
+      if (imageItem) {
+        e.preventDefault()
+        const file = imageItem.getAsFile()
+
+        if (file) {
+          // Check file size (max 5MB)
+          if (file.size > 5 * 1024 * 1024) {
+            alert('粘贴失败：图片超过5MB，请压缩后重试')
+            return
+          }
+
+          // Read file as data URL
+          const reader = new FileReader()
+          reader.onload = (event) => {
+            const dataUrl = event.target?.result as string
+            if (dataUrl) {
+              // Create image element
+              const img = iframeDoc.createElement('img')
+              img.src = dataUrl
+              img.style.maxWidth = '100%'
+              img.style.height = 'auto'
+
+              // Get current selection
+              const selection = iframeDoc.getSelection()
+              if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0)
+                range.deleteContents()
+                range.insertNode(img)
+                // Move cursor after image
+                range.setStartAfter(img)
+                range.setEndAfter(img)
+                selection.removeAllRanges()
+                selection.addRange(range)
+              } else {
+                // If no selection, append to body
+                iframeDoc.body.appendChild(img)
+              }
+
+              // Trigger image resizer initialization for the new image
+              setTimeout(() => {
+                const images = iframeDoc.querySelectorAll('img')
+                const lastImage = images[images.length - 1]
+                if (lastImage && !lastImage.hasAttribute('data-image-resizer')) {
+                  // Manually trigger addImageResizer for this specific image
+                  const container = iframeDoc.createElement('div')
+                  container.className = 'image-container'
+                  container.style.position = 'relative'
+                  container.style.display = 'inline-block'
+                  container.style.lineHeight = '0'
+
+                  lastImage.parentNode?.insertBefore(container, lastImage)
+                  container.appendChild(lastImage)
+                  lastImage.style.display = 'block'
+                  lastImage.setAttribute('data-image-resizer', 'true')
+
+                  // Create handles for this image
+                  const handles = {
+                    tl: iframeDoc.createElement('div'),
+                    tr: iframeDoc.createElement('div'),
+                    bl: iframeDoc.createElement('div'),
+                    br: iframeDoc.createElement('div')
+                  }
+
+                  Object.values(handles).forEach(handle => {
+                    handle.className = 'image-resize-handle'
+                    handle.style.cssText = `
+                      position: absolute;
+                      width: 12px;
+                      height: 12px;
+                      background: #3b82f6;
+                      border: 2px solid white;
+                      border-radius: 50%;
+                      z-index: 10000;
+                      pointer-events: auto;
+                      display: block;
+                      box-shadow: 0 0 3px rgba(0,0,0,0.5);
+                    `
+                    container.appendChild(handle)
+                  })
+
+                  // Position handles
+                  const positionHandles = () => {
+                    handles.tl.style.left = '-6px'
+                    handles.tl.style.top = '-6px'
+                    handles.tr.style.left = `${lastImage.offsetWidth - 6}px`
+                    handles.tr.style.top = '-6px'
+                    handles.bl.style.left = '-6px'
+                    handles.bl.style.top = `${lastImage.offsetHeight - 6}px`
+                    handles.br.style.left = `${lastImage.offsetWidth - 6}px`
+                    handles.br.style.top = `${lastImage.offsetHeight - 6}px`
+                  }
+
+                  positionHandles()
+                }
+              }, 50)
+            }
+          }
+          reader.readAsDataURL(file)
+        }
+      }
+    }
+
+    // Add paste event listener
+    iframeDoc.addEventListener('paste', handlePaste)
+
+    // Add keydown event handler for Delete key
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isEditing) return
+
+      // Check for Delete key
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        // Find visible handles (images being edited)
+        const visibleHandles = iframeDoc.querySelectorAll('.image-resize-handle[style*="block"]')
+
+        if (visibleHandles.length > 0) {
+          e.preventDefault()
+          e.stopPropagation()
+
+          // Get the first visible handle's image
+          const handle = visibleHandles[0] as HTMLElement
+          const container = handle.parentElement
+          const img = container?.querySelector('img')
+
+          if (img && container) {
+            // Remove container (which removes img and handles)
+            container.remove()
+
+            // Sync content change
+            const newHtml = iframeDoc.documentElement.outerHTML
+            onContentChange(newHtml)
+          }
+        }
+      }
+    }
+
+    // Add keydown event listener to document
+    iframeDoc.addEventListener('keydown', handleKeyDown)
 
     // Restore state after content loads
     if (!isInitialLoadRef.current) {
@@ -171,6 +522,10 @@ export default function EditablePreview({ selectedFile, content, onContentChange
           *[contenteditable="true"] {
             cursor: text;
           }
+          img {
+            cursor: move;
+            max-width: 100%;
+          }
         `
         iframeDoc.head.appendChild(style)
 
@@ -178,6 +533,10 @@ export default function EditablePreview({ selectedFile, content, onContentChange
 
         return () => {
           iframeDoc.body.removeEventListener('input', handleInput)
+          // Remove global click handler
+          if (globalClickHandlerRef.current) {
+            iframeDoc.removeEventListener('click', globalClickHandlerRef.current, false)
+          }
         }
       }
     } else {
@@ -186,7 +545,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
         iframeDoc.body.contentEditable = 'false'
       }
     }
-  }, [content, isEditing, handleInput])
+  }, [content, isEditing, handleInput, onContentChange, restoreSelection, saveSelection])
 
   const toggleEditMode = () => {
     // If we're exiting edit mode, sync the latest content first
