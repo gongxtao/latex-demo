@@ -1,11 +1,24 @@
-import React, { useState, useRef } from 'react'
-import ToolbarButton from './ToolbarButton'
-import { ImageIcon } from '../icons'
+/**
+ * ImagePicker Component
+ * Handles image upload and selection
+ */
 
-interface ImagePickerProps {
+import React, { useState, useRef } from 'react'
+import ToolbarButton from '../buttons/ToolbarButton'
+import { IMAGE_MAX_SIZE_BYTES } from '../config/constants'
+import { ImageIcon } from '../../icons'
+
+export interface ImagePickerProps {
+  /** Callback when an image is selected */
   onImageSelect: (imageUrl: string) => void
+  /** Whether the picker is disabled */
   disabled?: boolean
 }
+
+/**
+ * Note: This component requires onImageSelect to be provided.
+ * If using in ButtonRenderer, ensure onImageSelect callback is passed.
+ */
 
 const ImagePicker: React.FC<ImagePickerProps> = ({ onImageSelect, disabled = false }) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -21,9 +34,9 @@ const ImagePicker: React.FC<ImagePickerProps> = ({ onImageSelect, disabled = fal
       return
     }
 
-    // Check file size (limit to 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image size must be less than 5MB')
+    // Check file size
+    if (file.size > IMAGE_MAX_SIZE_BYTES) {
+      alert(`Image size must be less than ${IMAGE_MAX_SIZE_BYTES / (1024 * 1024)}MB`)
       return
     }
 

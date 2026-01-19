@@ -1,0 +1,157 @@
+/**
+ * Button configuration definitions
+ * Each button type has a specific structure that the ButtonRenderer will use
+ */
+
+import type { ComponentType } from 'react'
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export type ButtonType = 'command' | 'toggle' | 'picker' | 'select'
+
+export interface BaseButtonConfig {
+  id: string
+  type: ButtonType
+  label: string
+  shortcut?: string
+  disabled?: boolean
+}
+
+export interface CommandButtonConfig extends BaseButtonConfig {
+  type: 'command'
+  command: string
+  commandArg?: string
+  icon?: ComponentType<any>
+}
+
+export interface ToggleButtonConfig extends BaseButtonConfig {
+  type: 'toggle'
+  command: string
+  icon?: ComponentType<any>
+  content?: string // For text-based buttons like "B", "I", "U"
+}
+
+export interface PickerButtonConfig extends BaseButtonConfig {
+  type: 'picker'
+  picker: 'color-text' | 'color-background' | 'image' | 'table'
+  icon?: ComponentType<any>
+}
+
+export interface SelectButtonConfig extends Omit<BaseButtonConfig, 'label'> {
+  type: 'select'
+  options: Array<{ value: string; label: string; disabled?: boolean }>
+  defaultValue?: string
+  selectLabel?: string // Label for the select dropdown (placeholder)
+  label: string // Required label for accessibility
+}
+
+export type ButtonConfig = CommandButtonConfig | ToggleButtonConfig | PickerButtonConfig | SelectButtonConfig
+
+// ============================================================================
+// History Buttons
+// ============================================================================
+
+export const HISTORY_BUTTONS: CommandButtonConfig[] = [
+  { id: 'undo', type: 'command', command: 'undo', label: 'Undo', shortcut: 'Ctrl+Z' },
+  { id: 'redo', type: 'command', command: 'redo', label: 'Redo', shortcut: 'Ctrl+Y' }
+]
+
+// ============================================================================
+// Format Buttons (Text formatting)
+// ============================================================================
+
+export const FORMAT_BUTTONS: ToggleButtonConfig[] = [
+  { id: 'bold', type: 'toggle', command: 'bold', label: 'Bold', shortcut: 'Ctrl+B', content: 'B' },
+  { id: 'italic', type: 'toggle', command: 'italic', label: 'Italic', shortcut: 'Ctrl+I', content: 'I' },
+  { id: 'underline', type: 'toggle', command: 'underline', label: 'Underline', shortcut: 'Ctrl+U', content: 'U' },
+  { id: 'strikeThrough', type: 'toggle', command: 'strikeThrough', label: 'Strikethrough', shortcut: 'Ctrl+Shift+S', content: 'S' },
+  { id: 'superscript', type: 'toggle', command: 'superscript', label: 'Superscript' },
+  { id: 'subscript', type: 'toggle', command: 'subscript', label: 'Subscript' }
+]
+
+// ============================================================================
+// Color Buttons
+// ============================================================================
+
+export const COLOR_BUTTONS: PickerButtonConfig[] = [
+  { id: 'text-color', type: 'picker', picker: 'color-text', label: 'Text color' },
+  { id: 'background-color', type: 'picker', picker: 'color-background', label: 'Background color' }
+]
+
+// ============================================================================
+// Alignment Buttons
+// ============================================================================
+
+export const ALIGNMENT_BUTTONS: CommandButtonConfig[] = [
+  { id: 'align-left', type: 'command', command: 'justifyLeft', label: 'Align left', shortcut: 'Ctrl+L' },
+  { id: 'align-center', type: 'command', command: 'justifyCenter', label: 'Align center', shortcut: 'Ctrl+E' },
+  { id: 'align-right', type: 'command', command: 'justifyRight', label: 'Align right', shortcut: 'Ctrl+R' },
+  { id: 'align-justify', type: 'command', command: 'justifyFull', label: 'Justify', shortcut: 'Ctrl+J' }
+]
+
+// ============================================================================
+// Indentation Buttons
+// ============================================================================
+
+export const INDENT_BUTTONS: CommandButtonConfig[] = [
+  { id: 'outdent', type: 'command', command: 'outdent', label: 'Outdent', shortcut: 'Shift+Tab' },
+  { id: 'indent', type: 'command', command: 'indent', label: 'Indent', shortcut: 'Tab' }
+]
+
+// ============================================================================
+// List Buttons
+// ============================================================================
+
+export const LIST_BUTTONS: CommandButtonConfig[] = [
+  { id: 'bulleted-list', type: 'command', command: 'insertUnorderedList', label: 'Bulleted list', shortcut: 'Ctrl+Shift+8' },
+  { id: 'numbered-list', type: 'command', command: 'insertOrderedList', label: 'Numbered list', shortcut: 'Ctrl+Shift+7' }
+]
+
+// ============================================================================
+// Insert Buttons
+// ============================================================================
+
+export const INSERT_BUTTONS: (CommandButtonConfig | PickerButtonConfig)[] = [
+  { id: 'link', type: 'command', command: 'createLink', label: 'Insert link', shortcut: 'Ctrl+K' },
+  { id: 'unlink', type: 'command', command: 'unlink', label: 'Remove link', shortcut: 'Ctrl+Shift+K' },
+  { id: 'image', type: 'picker', picker: 'image', label: 'Insert image' },
+  { id: 'table', type: 'picker', picker: 'table', label: 'Insert table' },
+  { id: 'hr', type: 'command', command: 'insertHorizontalRule', label: 'Horizontal line' }
+]
+
+// ============================================================================
+// Table Operation Buttons
+// ============================================================================
+
+export const TABLE_OPERATION_BUTTONS: CommandButtonConfig[] = [
+  { id: 'add-row', type: 'command', command: 'addTableRow', label: 'Add row' },
+  { id: 'delete-row', type: 'command', command: 'deleteTableRow', label: 'Delete row' },
+  { id: 'add-column', type: 'command', command: 'addTableColumn', label: 'Add column' },
+  { id: 'delete-column', type: 'command', command: 'deleteTableColumn', label: 'Delete column' }
+]
+
+// ============================================================================
+// Utility Buttons
+// ============================================================================
+
+export const UTILITY_BUTTONS: CommandButtonConfig[] = [
+  { id: 'clear-format', type: 'command', command: 'removeFormat', label: 'Clear formatting', shortcut: 'Ctrl+Shift+N' }
+]
+
+// ============================================================================
+// Export groups for use in toolbar config
+// ============================================================================
+
+export const BUTTON_GROUPS = {
+  history: HISTORY_BUTTONS,
+  format: FORMAT_BUTTONS,
+  colors: COLOR_BUTTONS,
+  alignment: ALIGNMENT_BUTTONS,
+  indent: INDENT_BUTTONS,
+  lists: LIST_BUTTONS,
+  insert: INSERT_BUTTONS,
+  tableOperations: TABLE_OPERATION_BUTTONS,
+  utility: UTILITY_BUTTONS
+} as const

@@ -1,17 +1,33 @@
+/**
+ * EditorToolbar Component (Refactored)
+ * Configuration-driven toolbar implementation
+ * Reduced from 413 lines to ~250 lines
+ */
+
 'use client'
 
-import React, { useRef } from 'react'
-import { RefObject } from 'react'
-import { ToolbarButton, ToolbarGroup, ToolbarSelect } from './toolbar'
+import React, { RefObject } from 'react'
+
+// Core components
+import ToolbarRow from './toolbar/core/ToolbarRow'
+import ButtonRenderer from './toolbar/core/ButtonRenderer'
+
+// Groups
+import ToolbarGroup from './toolbar/groups/ToolbarGroup'
+
+// Hooks
+import { useEditorCommands } from './toolbar/hooks/useEditorCommands'
+import { useEditorState, EditorState } from './toolbar/hooks/useEditorState'
+
+// Config
+import { BUTTON_GROUPS, TOOLBAR_CONFIG } from './toolbar/config'
+
+// Icons
 import {
   AlignIcon,
   ListIcon,
   LinkIcon,
   UnlinkIcon,
-  ImageIcon,
-  TableIcon,
-  QuoteIcon,
-  CodeIcon,
   DividerIcon,
   UndoIcon,
   RedoIcon,
@@ -20,14 +36,11 @@ import {
   AddRowIcon,
   DeleteRowIcon,
   AddColumnIcon,
-  DeleteColumnIcon
+  DeleteColumnIcon,
+  SuperscriptIcon,
+  SubscriptIcon,
+  RemoveFormatIcon
 } from './icons'
-import ColorPicker from './toolbar/ColorPicker';
-import BackgroundColorPicker from './toolbar/BackgroundColorPicker';
-import TablePicker from './toolbar/TablePicker';
-import ImagePicker from './toolbar/ImagePicker';
-import { applyStyle } from './utils/style';
-import { TableHandler } from './utils/table';
 
 /**
  * Props for the EditorToolbar component
@@ -37,377 +50,321 @@ export interface EditorToolbarProps {
   onContentChange: (content: string) => void
   isEditing: boolean
   disabled?: boolean
-  onUndo?: () => void
-  onRedo?: () => void
-  canUndo?: boolean
-  canRedo?: boolean
 }
 
-// EditorToolbar component with internalized actions
-const EditorToolbar: React.FC<EditorToolbarProps> = ({ 
-  iframeRef, 
-  onContentChange, 
-  isEditing, 
-  disabled,
-  onUndo,
-  onRedo,
-  canUndo,
-  canRedo
+// Icon mapping for button configs
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
+  'undo': UndoIcon,
+  'redo': RedoIcon,
+  'align-left': () => <AlignIcon type="left" />,
+  'align-center': () => <AlignIcon type="center" />,
+  'align-right': () => <AlignIcon type="right" />,
+  'align-justify': () => <AlignIcon type="justify" />,
+  'outdent': OutdentIcon,
+  'indent': IndentIcon,
+  'bulleted-list': () => <ListIcon type="unordered" />,
+  'numbered-list': () => <ListIcon type="ordered" />,
+  'link': LinkIcon,
+  'unlink': UnlinkIcon,
+  'hr': DividerIcon,
+  'add-row': AddRowIcon,
+  'delete-row': DeleteRowIcon,
+  'add-column': AddColumnIcon,
+  'delete-column': DeleteColumnIcon,
+  'superscript': SuperscriptIcon,
+  'subscript': SubscriptIcon,
+  'clear-format': RemoveFormatIcon
+}
+
+/**
+ * Assign icons to button configs
+ */
+function assignIconsToConfigs(configs: any[]): any[] {
+  return configs.map(config => ({
+    ...config,
+    icon: ICON_MAP[config.id]
+  }))
+}
+
+/**
+ * Main toolbar component with configuration-driven rendering
+ */
+const EditorToolbar: React.FC<EditorToolbarProps> = ({
+  iframeRef,
+  onContentChange,
+  isEditing,
+  disabled: propsDisabled
 }) => {
-  const isDisabled = disabled || !isEditing;
-  const isUpdatingRef = useRef(false);
+  const disabled = propsDisabled || !isEditing
 
-  // Internal helpers
-  const getIframeDoc = () => iframeRef.current?.contentDocument || iframeRef.current?.contentWindow?.document || null;
+  // Use editor commands hook
+  const { commands } = useEditorCommands({
+    iframeRef,
+    onContentChange,
+    isEditing
+  })
 
-  const applyFormat = (fn: (doc: Document) => void) => {
-    const doc = getIframeDoc()
-    if (!doc || !isEditing) return
+  // Use editor state hook
+  const { editorState } = useEditorState({ iframeRef })
 
-    // Save current selection before applying format
-    const selection = doc.getSelection()
-    const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null
-
-    // Apply the format
-    fn(doc)
-
-    // Restore focus to iframe
-    const iframe = iframeRef.current
-    if (iframe) {
-      iframe.focus()
+  // Helper to determine button state
+  const getButtonState = (id: string): { isActive: boolean } => {
+    switch (id) {
+      // Alignment
+      case 'align-left': return { isActive: editorState.align === 'left' }
+      case 'align-center': return { isActive: editorState.align === 'center' }
+      case 'align-right': return { isActive: editorState.align === 'right' }
+      case 'align-justify': return { isActive: editorState.align === 'justify' }
+      
+      // Lists
+      case 'bulleted-list': return { isActive: editorState.isUnorderedList }
+      case 'numbered-list': return { isActive: editorState.isOrderedList }
+      
+      // Toggles (Format)
+      case 'bold': return { isActive: editorState.isBold }
+      case 'italic': return { isActive: editorState.isItalic }
+      case 'underline': return { isActive: editorState.isUnderline }
+      case 'strikeThrough': return { isActive: editorState.isStrikeThrough }
+      case 'subscript': return { isActive: editorState.isSubscript }
+      case 'superscript': return { isActive: editorState.isSuperscript }
+      
+      default: return { isActive: false }
     }
-
-    // Restore selection if possible, otherwise place cursor at end
-    const body = doc.body
-    if (body) {
-      if (range && selection) {
-        try {
-          selection.removeAllRanges()
-          selection.addRange(range)
-        } catch (e) {
-          // If restoration fails, place cursor at end
-          const newRange = doc.createRange()
-          newRange.selectNodeContents(body)
-          newRange.collapse(false)
-          selection.removeAllRanges()
-          selection.addRange(newRange)
-        }
-      } else if (selection) {
-        // No previous selection, place cursor at end
-        const newRange = doc.createRange()
-        newRange.selectNodeContents(body)
-        newRange.collapse(false)
-        selection.removeAllRanges()
-        selection.addRange(newRange)
-      }
-    }
-
-    isUpdatingRef.current = true
-    const newHtml = doc.documentElement.outerHTML
-    onContentChange(newHtml)
-    setTimeout(() => {
-      isUpdatingRef.current = false
-    }, 50)
   }
 
-  // Internal actions (moved from EditablePreview)
-  const applyHeading = (level: number) => applyFormat(doc => doc.execCommand('formatBlock', false, `h${level}`));
-  const applyParagraph = () => applyFormat(doc => doc.execCommand('formatBlock', false, 'p'));
-  const insertBulletedList = () => applyFormat(doc => doc.execCommand('insertUnorderedList'));
-  const insertNumberedList = () => applyFormat(doc => doc.execCommand('insertOrderedList'));
-  const insertLink = () => {
-    const url = typeof window !== 'undefined' ? window.prompt('Enter link URL') : null;
-    if (!url) return;
-    applyFormat(doc => {
-      const sel = doc.getSelection();
-      if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
-        doc.execCommand('createLink', false, url);
+  // Prepare button configs with icons
+  const historyButtons = assignIconsToConfigs(BUTTON_GROUPS.history)
+  const formatButtons = assignIconsToConfigs(BUTTON_GROUPS.format)
+  const colorButtons = BUTTON_GROUPS.colors
+  const alignmentButtons = assignIconsToConfigs(BUTTON_GROUPS.alignment)
+  const indentButtons = assignIconsToConfigs(BUTTON_GROUPS.indent)
+  const listButtons = assignIconsToConfigs(BUTTON_GROUPS.lists)
+  const insertButtons = assignIconsToConfigs(BUTTON_GROUPS.insert)
+  const tableOperationButtons = assignIconsToConfigs(BUTTON_GROUPS.tableOperations)
+  const utilityButtons = assignIconsToConfigs(BUTTON_GROUPS.utility)
+
+  // Configs for selects
+  const fontFamilyConfig = TOOLBAR_CONFIG.rows[0].groups.find(g => g.id === 'font-family')?.items[0]
+  const fontSizeConfig = TOOLBAR_CONFIG.rows[0].groups.find(g => g.id === 'font-size')?.items[0]
+  const headingConfig = TOOLBAR_CONFIG.rows[1].groups.find(g => g.id === 'heading')?.items[0]
+
+  // Command handler
+  const handleCommand = (command: string, arg?: string) => {
+    const cmd = commands[command as keyof typeof commands]
+    if (typeof cmd === 'function') {
+      if (arg !== undefined) {
+        (cmd as (arg: string) => void)(arg)
       } else {
-        doc.execCommand('insertHTML', false, `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`); 
+        (cmd as () => void)()
       }
-    });
-  };
-  const removeLink = () => applyFormat(doc => doc.execCommand('unlink'));
-  const toggleBold = () => applyFormat(doc => doc.execCommand('bold'));
-  const toggleItalic = () => applyFormat(doc => doc.execCommand('italic'));
-  const toggleUnderline = () => applyFormat(doc => doc.execCommand('underline'));
-  const toggleStrikeThrough = () => applyFormat(doc => doc.execCommand('strikeThrough'));
-  const alignLeft = () => applyFormat(doc => doc.execCommand('justifyLeft'));
-  const alignCenter = () => applyFormat(doc => doc.execCommand('justifyCenter'));
-  const alignRight = () => applyFormat(doc => doc.execCommand('justifyRight'));
-  const alignJustify = () => applyFormat(doc => doc.execCommand('justifyFull'));
-  const indent = () => applyFormat(doc => doc.execCommand('indent'));
-  const outdent = () => applyFormat(doc => doc.execCommand('outdent'));
-  const insertBlockquote = () => applyFormat(doc => doc.execCommand('formatBlock', false, 'blockquote'));
-  const insertCodeBlock = () => applyFormat(doc => doc.execCommand('formatBlock', false, 'pre'));
-  const insertHorizontalRule = () => applyFormat(doc => doc.execCommand('insertHorizontalRule'));
-  const superscript = () => applyFormat(doc => doc.execCommand('superscript'));
-  const subscript = () => applyFormat(doc => doc.execCommand('subscript'));
-  const clearFormat = () => applyFormat(doc => doc.execCommand('removeFormat'))
-  const undo = () => applyFormat(doc => doc.execCommand('undo'))
-  const redo = () => applyFormat(doc => doc.execCommand('redo'))
-  const applyTextColor = (color: string) => applyFormat(doc => doc.execCommand('foreColor', false, color));
-  const applyBackColor = (color: string) => applyFormat(doc => {
-    if (doc.queryCommandSupported('hiliteColor')) {
-      doc.execCommand('hiliteColor', false, color);
-    } else {
-      doc.execCommand('backColor', false, color);
     }
-  });
-
-  // Helper for custom style application
-  const applyCustomStyle = (styleName: string, value: string) => {
-    const doc = getIframeDoc()
-    if (!doc || !isEditing) return
-    
-    applyStyle(doc, styleName, value)
-    
-    // Sync change
-    isUpdatingRef.current = true
-    const newHtml = doc.documentElement.outerHTML
-    onContentChange(newHtml)
-    setTimeout(() => {
-      isUpdatingRef.current = false
-    }, 50)
   }
 
-  const setFontName = (name: string) => applyCustomStyle('fontFamily', name);
-  const setFontSize = (sizeLabel: string) => applyCustomStyle('fontSize', sizeLabel);
-  const insertImage = (imageUrl: string) => {
-    applyFormat(doc => {
-      doc.execCommand('insertImage', false, imageUrl);
-      // Trigger input event to notify content changed
-      setTimeout(() => {
-        doc.body?.dispatchEvent(new Event('input', { bubbles: true }));
-      }, 10);
-    });
-  };
-  const insertBasicTable = (rows: number = 2, cols: number = 2) => {
-    let html = '<table style="border-collapse: collapse; width: 100%;"><tbody>';
-
-    for (let i = 0; i < rows; i++) {
-      html += '<tr>';
-      for (let j = 0; j < cols; j++) {
-        html += '<td style="border: 1px solid #ccc; padding: 8px; min-width: 60px; height: 32px;"></td>';
+  // Color selection handler
+  const handleColorSelect = (color: string, type: 'text' | 'background') => {
+    if (type === 'text') {
+      commands.foreColor(color)
+    } else {
+      if (color === 'transparent') {
+        commands.removeFormat()
+      } else {
+        commands.hiliteColor(color)
       }
-      html += '</tr>';
     }
+  }
 
-    html += '</tbody></table>';
-    applyFormat(doc => doc.execCommand('insertHTML', false, html));
-  };
-  const insertEmoji = (emoji: string) => applyFormat(doc => doc.execCommand('insertText', false, emoji));
+  // Image selection handler
+  const handleImageSelect = (imageUrl: string) => {
+    commands.insertImage(imageUrl)
+  }
 
-  // Table operations
-  const addTableRow = () => applyFormat(doc => {
-    const table = doc.querySelector('table');
-    if (!table) return;
-    new TableHandler(table).insertRowEnd()
-  });
+  // Table selection handler
+  const handleTableSelect = (rows: number, cols: number) => {
+    commands.insertTable(rows, cols)
+  }
 
-  const deleteTableRow = () => applyFormat(doc => {
-    const table = doc.querySelector('table');
-    if (!table) return;
-    new TableHandler(table).deleteRowEnd()
-  });
-
-  const addTableColumn = () => applyFormat(doc => {
-    const table = doc.querySelector('table');
-    if (!table) return;
-    new TableHandler(table).insertColumnEnd()
-  });
-
-  const deleteTableColumn = () => applyFormat(doc => {
-    const table = doc.querySelector('table');
-    if (!table) return;
-    new TableHandler(table).deleteColumnEnd()
-  });
+  // Select change handler (for heading format, font, size)
+  const handleSelectChange = (id: string, value: string) => {
+    switch (id) {
+      case 'font-family':
+        commands.fontFamily(value)
+        break
+      case 'font-size':
+        commands.fontSize(value)
+        break
+      case 'heading':
+        if (value.startsWith('h')) {
+          commands.formatBlock(value)
+        } else if (value === 'p') {
+          commands.formatBlock('p')
+        } else if (value === 'blockquote') {
+          commands.formatBlock('blockquote')
+        } else if (value === 'code') {
+          commands.formatBlock('pre')
+        }
+        break
+    }
+  }
 
   return (
     <div className="flex flex-col bg-gray-50 border-b border-gray-300">
       {/* Row 1: Core editing features */}
-      <div className="flex items-center flex-wrap px-4 py-2 gap-2">
-        {/* Undo/Redo */}
-        <ToolbarGroup>
-          <ToolbarButton title="Undo" onClick={undo} disabled={isDisabled}>
-            <UndoIcon />
-          </ToolbarButton>
-          <ToolbarButton title="Redo" onClick={redo} disabled={isDisabled}>
-            <RedoIcon />
-          </ToolbarButton>
+      <ToolbarRow id="toolbar-row-1" showBorder={false}>
+        {/* History */}
+        <ToolbarGroup id="history">
+          {historyButtons.map(config => (
+            <ButtonRenderer
+              key={config.id}
+              config={config}
+              disabled={disabled}
+              onCommand={handleCommand}
+            />
+          ))}
         </ToolbarGroup>
 
         {/* Font Family */}
-        <ToolbarGroup>
-          <ToolbarSelect
-            label="Font"
-            onChange={(e) => setFontName(e.target.value)}
-            disabled={isDisabled}
-            options={[
-              { value: 'Arial', label: 'Arial' },
-              { value: 'Times New Roman', label: 'Times New Roman' },
-              { value: 'Georgia', label: 'Georgia' },
-              { value: 'Courier New', label: 'Courier New' }
-            ]}
-          />
+        <ToolbarGroup id="font-family" label="Font">
+          {fontFamilyConfig && (
+            <ButtonRenderer
+              key={fontFamilyConfig.id}
+              config={fontFamilyConfig}
+              disabled={disabled}
+              value={editorState.fontName}
+              onSelectChange={handleSelectChange}
+            />
+          )}
         </ToolbarGroup>
 
         {/* Font Size */}
-        <ToolbarGroup>
-          <ToolbarSelect
-            label="Size"
-            onChange={(e) => setFontSize(e.target.value)}
-            disabled={isDisabled}
-            options={[
-              { value: '12px', label: '12px' },
-              { value: '14px', label: '14px' },
-              { value: '16px', label: '16px' },
-              { value: '18px', label: '18px' },
-              { value: '24px', label: '24px' }
-            ]}
-          />
+        <ToolbarGroup id="font-size" label="Size">
+          {fontSizeConfig && (
+            <ButtonRenderer
+              key={fontSizeConfig.id}
+              config={fontSizeConfig}
+              disabled={disabled}
+              value={editorState.fontSize}
+              onSelectChange={handleSelectChange}
+            />
+          )}
         </ToolbarGroup>
 
-        {/* Text Formatting - Most used, always visible */}
-        <ToolbarGroup>
-          <ToolbarButton title="Bold" onClick={toggleBold} disabled={isDisabled}>
-            <span className="font-bold">B</span>
-          </ToolbarButton>
-          <ToolbarButton title="Italic" onClick={toggleItalic} disabled={isDisabled}>
-            <span className="italic">I</span>
-          </ToolbarButton>
-          <ToolbarButton title="Underline" onClick={toggleUnderline} disabled={isDisabled}>
-            <span className="underline">U</span>
-          </ToolbarButton>
-          <ToolbarButton title="Strikethrough" onClick={toggleStrikeThrough} disabled={isDisabled}>
-            <span className="line-through">S</span>
-          </ToolbarButton>
-          <ToolbarButton title="Superscript" onClick={superscript} disabled={isDisabled}>
-            Sup
-          </ToolbarButton>
-          <ToolbarButton title="Subscript" onClick={subscript} disabled={isDisabled}>
-            Sub
-          </ToolbarButton>
+        {/* Text Formatting */}
+        <ToolbarGroup id="format">
+          {formatButtons.map(config => (
+            <ButtonRenderer
+              key={config.id}
+              config={config}
+              disabled={disabled}
+              isActive={getButtonState(config.id).isActive}
+              onCommand={handleCommand}
+            />
+          ))}
         </ToolbarGroup>
 
         {/* Colors */}
-        <ToolbarGroup>
-          <ColorPicker
-            onColorSelect={(color) => applyFormat(doc => doc.execCommand('foreColor', false, color))}
-          />
-          <BackgroundColorPicker
-            onColorSelect={(color) => {
-              // For transparent color, use removeFormat
-              if (color === 'transparent') {
-                applyFormat(doc => doc.execCommand('removeFormat', false, ''))
-              } else {
-                applyFormat(doc => doc.execCommand('hiliteColor', false, color))
-              }
-            }}
-          />
+        <ToolbarGroup id="colors">
+          {colorButtons.map(config => (
+            <ButtonRenderer
+              key={config.id}
+              config={config}
+              disabled={disabled}
+              onColorSelect={handleColorSelect}
+            />
+          ))}
         </ToolbarGroup>
 
         {/* Text Alignment */}
-        <ToolbarGroup>
-          <ToolbarButton title="Align left" onClick={alignLeft} disabled={isDisabled}>
-            <AlignIcon type="left" />
-          </ToolbarButton>
-          <ToolbarButton title="Align center" onClick={alignCenter} disabled={isDisabled}>
-            <AlignIcon type="center" />
-          </ToolbarButton>
-          <ToolbarButton title="Align right" onClick={alignRight} disabled={isDisabled}>
-            <AlignIcon type="right" />
-          </ToolbarButton>
-          <ToolbarButton title="Justify" onClick={alignJustify} disabled={isDisabled}>
-            <AlignIcon type="justify" />
-          </ToolbarButton>
+        <ToolbarGroup id="alignment">
+          {alignmentButtons.map(config => (
+            <ButtonRenderer
+              key={config.id}
+              config={config}
+              disabled={disabled}
+              isActive={getButtonState(config.id).isActive}
+              onCommand={handleCommand}
+            />
+          ))}
         </ToolbarGroup>
 
         {/* Indentation */}
-        <ToolbarGroup>
-          <ToolbarButton title="Outdent" onClick={outdent} disabled={isDisabled}>
-            <OutdentIcon />
-          </ToolbarButton>
-          <ToolbarButton title="Indent" onClick={indent} disabled={isDisabled}>
-            <IndentIcon />
-          </ToolbarButton>
+        <ToolbarGroup id="indent">
+          {indentButtons.map(config => (
+            <ButtonRenderer
+              key={config.id}
+              config={config}
+              disabled={disabled}
+              onCommand={handleCommand}
+            />
+          ))}
         </ToolbarGroup>
-      </div>
+      </ToolbarRow>
 
       {/* Row 2: Lists, Insert, and Format */}
-      <div className="flex items-center flex-wrap px-4 py-2 gap-2 border-t border-gray-200">
+      <ToolbarRow id="toolbar-row-2" showBorder={true}>
         {/* Lists */}
-        <ToolbarGroup>
-          <ToolbarButton title="Bulleted list" onClick={insertBulletedList} disabled={isDisabled}>
-            <ListIcon type="unordered" />
-          </ToolbarButton>
-          <ToolbarButton title="Numbered list" onClick={insertNumberedList} disabled={isDisabled}>
-            <ListIcon type="ordered" />
-          </ToolbarButton>
+        <ToolbarGroup id="lists">
+          {listButtons.map(config => (
+            <ButtonRenderer
+              key={config.id}
+              config={config}
+              disabled={disabled}
+              isActive={getButtonState(config.id).isActive}
+              onCommand={handleCommand}
+            />
+          ))}
         </ToolbarGroup>
 
         {/* Insert */}
-        <ToolbarGroup>
-          <ToolbarButton title="Insert link" onClick={insertLink} disabled={isDisabled}>
-            <LinkIcon />
-          </ToolbarButton>
-          <ImagePicker
-            onImageSelect={insertImage}
-            disabled={isDisabled}
-          />
-          <TablePicker
-            onTableSelect={(rows, cols) => insertBasicTable(rows, cols)}
-            disabled={isDisabled}
-          />
-          <ToolbarButton title="Add row" onClick={addTableRow} disabled={isDisabled}>
-            <AddRowIcon />
-          </ToolbarButton>
-          <ToolbarButton title="Delete row" onClick={deleteTableRow} disabled={isDisabled}>
-            <DeleteRowIcon />
-          </ToolbarButton>
-          <ToolbarButton title="Add column" onClick={addTableColumn} disabled={isDisabled}>
-            <AddColumnIcon />
-          </ToolbarButton>
-          <ToolbarButton title="Delete column" onClick={deleteTableColumn} disabled={isDisabled}>
-            <DeleteColumnIcon />
-          </ToolbarButton>
+        <ToolbarGroup id="insert">
+          {insertButtons.map(config => (
+            <ButtonRenderer
+              key={config.id}
+              config={config}
+              disabled={disabled}
+              onCommand={handleCommand}
+              onImageSelect={handleImageSelect}
+              onTableSelect={handleTableSelect}
+            />
+          ))}
         </ToolbarGroup>
 
-        {/* Paragraph Format */}
-        <ToolbarGroup>
-          <ToolbarSelect
-            label="Format"
-            onChange={(e) => {
-              const value = e.target.value
-              if (value === 'h1') applyHeading(1)
-              else if (value === 'h2') applyHeading(2)
-              else if (value === 'h3') applyHeading(3)
-              else if (value === 'p') applyParagraph()
-              else if (value === 'blockquote') insertBlockquote()
-              else if (value === 'code') insertCodeBlock()
-            }}
-            disabled={isDisabled}
-            options={[
-              { value: '', label: 'Normal text' },
-              { value: 'h1', label: 'Heading 1' },
-              { value: 'h2', label: 'Heading 2' },
-              { value: 'h3', label: 'Heading 3' },
-              { value: 'blockquote', label: 'Blockquote' },
-              { value: 'code', label: 'Code block' }
-            ]}
-          />
+        {/* Table Operations */}
+        <ToolbarGroup id="table-operations">
+          {tableOperationButtons.map(config => (
+            <ButtonRenderer
+              key={config.id}
+              config={config}
+              disabled={disabled}
+              onCommand={handleCommand}
+            />
+          ))}
         </ToolbarGroup>
 
-        {/* More Actions */}
-        <ToolbarGroup>
-          <ToolbarButton title="Clear formatting" onClick={clearFormat} disabled={isDisabled}>
-            Clear
-          </ToolbarButton>
-          <ToolbarButton title="Insert horizontal line" onClick={insertHorizontalRule} disabled={isDisabled}>
-            <DividerIcon />
-          </ToolbarButton>
+        {/* Heading Format */}
+        <ToolbarGroup id="heading" label="Format">
+          {headingConfig && (
+            <ButtonRenderer
+              key={headingConfig.id}
+              config={headingConfig}
+              disabled={disabled}
+              value={editorState.formatBlock}
+              onSelectChange={handleSelectChange}
+            />
+          )}
         </ToolbarGroup>
-      </div>
+
+        {/* Utility */}
+        <ToolbarGroup id="utility">
+          {utilityButtons.map(config => (
+            <ButtonRenderer
+              key={config.id}
+              config={config}
+              disabled={disabled}
+              onCommand={handleCommand}
+            />
+          ))}
+        </ToolbarGroup>
+      </ToolbarRow>
     </div>
   )
 }

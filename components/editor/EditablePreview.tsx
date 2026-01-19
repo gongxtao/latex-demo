@@ -453,10 +453,6 @@ export default function EditablePreview({ selectedFile, content, onContentChange
         onContentChange={debouncedSync}
         isEditing={!!selectedFile && isEditing}
         disabled={!selectedFile}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
-        canUndo={canUndo}
-        canRedo={canRedo}
       />
 
       {/* Editable Preview Area */}

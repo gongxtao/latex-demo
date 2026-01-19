@@ -1,4 +1,9 @@
-import React, { SelectHTMLAttributes } from 'react'
+/**
+ * ToolbarSelect Component
+ * A select dropdown for toolbar options
+ */
+
+import React, { SelectHTMLAttributes, memo } from 'react'
 
 export interface ToolbarSelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string
@@ -9,7 +14,7 @@ export interface ToolbarSelectProps extends SelectHTMLAttributes<HTMLSelectEleme
   }>
 }
 
-const ToolbarSelect: React.FC<ToolbarSelectProps> = ({
+const ToolbarSelect = memo<ToolbarSelectProps>(({
   label,
   options,
   className = '',
@@ -40,6 +45,8 @@ const ToolbarSelect: React.FC<ToolbarSelectProps> = ({
       ))}
     </select>
   )
-}
+})
+
+ToolbarSelect.displayName = 'ToolbarSelect'
 
 export default ToolbarSelect
