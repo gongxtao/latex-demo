@@ -6,6 +6,8 @@ import debounce from 'lodash/debounce'
 import EditorToolbar from './EditorToolbar'
 import useHistory from './hooks/useHistory'
 import ImageResizer from './ImageResizer'
+import TableContextMenu from './TableContextMenu'
+import { TableHandler } from './utils/table'
 
 interface EditablePreviewProps {
   selectedFile: string | null
@@ -26,6 +28,11 @@ export default function EditablePreview({ selectedFile, content, onContentChange
   const lastSyncedContentRef = useRef(content)
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null)
   const [iframeBody, setIframeBody] = useState<HTMLElement | null>(null)
+  const [contextMenu, setContextMenu] = useState<{
+    target: HTMLTableElement,
+    cell: HTMLTableCellElement,
+    position: { x: number, y: number }
+  } | null>(null)
   
   // History management
   const { push: pushHistory, undo, redo, canUndo, canRedo } = useHistory(content)
@@ -220,9 +227,40 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       if (target.classList.contains('resizer-handle')) {
         return
       }
+      
+      // Close context menu on click
+      setContextMenu(null)
 
       // Deselect otherwise
       setSelectedImage(null)
+    }
+    
+    // Context menu handler
+    const handleContextMenu = (e: MouseEvent) => {
+      if (!isEditing) return
+      
+      const target = e.target as HTMLElement
+      // Find closest TD/TH
+      const cell = target.closest('td, th') as HTMLTableCellElement
+      if (!cell) return
+      
+      const table = cell.closest('table') as HTMLTableElement
+      if (!table) return
+      
+      e.preventDefault()
+      
+      // Calculate position relative to viewport
+      // We need to account for iframe position
+      const iframeRect = iframe.getBoundingClientRect()
+      
+      setContextMenu({
+        target: table,
+        cell: cell,
+        position: {
+          x: iframeRect.left + e.clientX,
+          y: iframeRect.top + e.clientY
+        }
+      })
     }
 
     // Handle mouseup as fallback for click (sometimes click is swallowed during editing)
@@ -240,6 +278,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     setTimeout(() => {
       iframeDoc.addEventListener('click', handleGlobalClick, false)
       iframeDoc.addEventListener('mouseup', handleMouseUp, false)
+      iframeDoc.addEventListener('contextmenu', handleContextMenu, false)
     }, 100)
 
     // Add paste event handler for Ctrl+V image insertion
@@ -419,6 +458,43 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     setPreviewKey(prev => prev + 1)
   }
 
+  const handleContextMenuAction = (action: string) => {
+    if (!contextMenu) return
+
+    const { target, cell } = contextMenu
+    const handler = new TableHandler(target)
+
+    switch (action) {
+      case 'insertRowBefore':
+        handler.insertRowBefore(cell)
+        break
+      case 'insertRowAfter':
+        handler.insertRowAfter(cell)
+        break
+      case 'deleteRow':
+        handler.deleteRow(cell)
+        break
+      case 'insertColumnBefore':
+        handler.insertColumnBefore(cell)
+        break
+      case 'insertColumnAfter':
+        handler.insertColumnAfter(cell)
+        break
+      case 'deleteColumn':
+        handler.deleteColumn(cell)
+        break
+      case 'deleteTable':
+        handler.deleteTable()
+        break
+    }
+
+    // Trigger sync
+    if (iframeRef.current?.contentDocument) {
+      const newHtml = iframeRef.current.contentDocument.documentElement.outerHTML
+      debouncedSync(newHtml)
+    }
+  }
+
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Toolbar */}
@@ -490,20 +566,30 @@ export default function EditablePreview({ selectedFile, content, onContentChange
             />
             {/* Render resizer outside iframe but position it over it, OR render inside if using Portal correctly */}
             {iframeBody && createPortal(
-              <ImageResizer 
-                target={selectedImage}
-                iframeDoc={iframeRef.current?.contentDocument || null}
-                onUpdate={() => {
-                  if (iframeRef.current?.contentDocument) {
-                    const newHtml = iframeRef.current.contentDocument.documentElement.outerHTML
-                    debouncedSync(newHtml)
-                  }
-                }}
-              />,
-              iframeBody
-            )}
-          </div>
-        ) : (
+        <ImageResizer 
+          target={selectedImage}
+          iframeDoc={iframeRef.current?.contentDocument || null}
+          onUpdate={() => {
+            if (iframeRef.current?.contentDocument) {
+              const newHtml = iframeRef.current.contentDocument.documentElement.outerHTML
+              debouncedSync(newHtml)
+            }
+          }}
+        />,
+        iframeBody
+      )}
+
+      {/* Table Context Menu */}
+      {contextMenu && (
+        <TableContextMenu
+          target={contextMenu.target}
+          position={contextMenu.position}
+          onClose={() => setContextMenu(null)}
+          onAction={handleContextMenuAction}
+        />
+      )}
+    </div>
+  ) : (
           <div className="flex items-center justify-center h-full text-gray-400 text-lg">
             Please select an HTML file to start editing
           </div>
