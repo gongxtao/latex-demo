@@ -26,6 +26,8 @@ import ColorPicker from './toolbar/ColorPicker';
 import BackgroundColorPicker from './toolbar/BackgroundColorPicker';
 import TablePicker from './toolbar/TablePicker';
 import ImagePicker from './toolbar/ImagePicker';
+import { applyStyle } from './utils/style';
+import { TableHandler } from './utils/table';
 
 /**
  * Props for the EditorToolbar component
@@ -35,10 +37,23 @@ export interface EditorToolbarProps {
   onContentChange: (content: string) => void
   isEditing: boolean
   disabled?: boolean
+  onUndo?: () => void
+  onRedo?: () => void
+  canUndo?: boolean
+  canRedo?: boolean
 }
 
 // EditorToolbar component with internalized actions
-const EditorToolbar: React.FC<EditorToolbarProps> = ({ iframeRef, onContentChange, isEditing, disabled }) => {
+const EditorToolbar: React.FC<EditorToolbarProps> = ({ 
+  iframeRef, 
+  onContentChange, 
+  isEditing, 
+  disabled,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo
+}) => {
   const isDisabled = disabled || !isEditing;
   const isUpdatingRef = useRef(false);
 
@@ -139,13 +154,25 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ iframeRef, onContentChang
       doc.execCommand('backColor', false, color);
     }
   });
-  const setFontName = (name: string) => applyFormat(doc => doc.execCommand('fontName', false, name));
-  const setFontSize = (sizeLabel: string) => {
-    // Map common px sizes to execCommand sizes (1-7). This produces <font size> tags.
-    const map: Record<string, number> = { '12px': 2, '14px': 3, '16px': 4, '18px': 5, '24px': 6 };
-    const s = map[sizeLabel] || 3;
-    applyFormat(doc => doc.execCommand('fontSize', false, String(s)));
-  };
+
+  // Helper for custom style application
+  const applyCustomStyle = (styleName: string, value: string) => {
+    const doc = getIframeDoc()
+    if (!doc || !isEditing) return
+    
+    applyStyle(doc, styleName, value)
+    
+    // Sync change
+    isUpdatingRef.current = true
+    const newHtml = doc.documentElement.outerHTML
+    onContentChange(newHtml)
+    setTimeout(() => {
+      isUpdatingRef.current = false
+    }, 50)
+  }
+
+  const setFontName = (name: string) => applyCustomStyle('fontFamily', name);
+  const setFontSize = (sizeLabel: string) => applyCustomStyle('fontSize', sizeLabel);
   const insertImage = (imageUrl: string) => {
     applyFormat(doc => {
       doc.execCommand('insertImage', false, imageUrl);
@@ -175,70 +202,25 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ iframeRef, onContentChang
   const addTableRow = () => applyFormat(doc => {
     const table = doc.querySelector('table');
     if (!table) return;
-
-    const firstRow = table.querySelector('tr');
-    if (!firstRow) return;
-
-    const cellCount = firstRow.children.length;
-    const newRow = doc.createElement('tr');
-
-    for (let i = 0; i < cellCount; i++) {
-      const newCell = doc.createElement('td');
-      newCell.style.border = '1px solid #ccc';
-      newCell.style.padding = '8px';
-      newCell.style.minWidth = '60px';
-      newCell.style.height = '32px';
-      newRow.appendChild(newCell);
-    }
-
-    table.appendChild(newRow);
+    new TableHandler(table).insertRowEnd()
   });
 
   const deleteTableRow = () => applyFormat(doc => {
     const table = doc.querySelector('table');
     if (!table) return;
-
-    const rows = table.querySelectorAll('tr');
-    if (rows.length > 1) {
-      const lastRow = rows[rows.length - 1];
-      lastRow.remove();
-    }
+    new TableHandler(table).deleteRowEnd()
   });
 
   const addTableColumn = () => applyFormat(doc => {
     const table = doc.querySelector('table');
     if (!table) return;
-
-    const rows = table.querySelectorAll('tr');
-    const firstRow = rows[0];
-    if (!firstRow) return;
-
-    rows.forEach(row => {
-      const newCell = doc.createElement('td');
-      newCell.style.border = '1px solid #ccc';
-      newCell.style.padding = '8px';
-      newCell.style.minWidth = '60px';
-      newCell.style.height = '32px';
-      row.appendChild(newCell);
-    });
+    new TableHandler(table).insertColumnEnd()
   });
 
   const deleteTableColumn = () => applyFormat(doc => {
     const table = doc.querySelector('table');
     if (!table) return;
-
-    const firstRow = table.querySelector('tr');
-    if (!firstRow) return;
-
-    if (firstRow.children.length > 1) {
-      const rows = table.querySelectorAll('tr');
-      rows.forEach(row => {
-        const lastCell = row.lastElementChild;
-        if (lastCell) {
-          lastCell.remove();
-        }
-      });
-    }
+    new TableHandler(table).deleteColumnEnd()
   });
 
   return (

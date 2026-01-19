@@ -1,12 +1,21 @@
 import { NextResponse } from 'next/server'
 import puppeteer from 'puppeteer'
 
+// Windows 系统常见 Chrome/Edge 路径
+const POSSIBLE_CHROME_PATHS = [
+  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Users\\' + process.env.USERNAME + '\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+  'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+]
+
 export async function POST(request: Request) {
   let browser = null
-  
+
   try {
     const { htmlContent, filename } = await request.json()
-    
+
     if (!htmlContent) {
       return NextResponse.json(
         { error: '缺少HTML内容' },
@@ -14,8 +23,8 @@ export async function POST(request: Request) {
       )
     }
 
-    // 启动浏览器
-    browser = await puppeteer.launch({
+    // 启动浏览器 - 优先使用系统 Chrome，失败则使用 Puppeteer 默认
+    const launchOptions: Parameters<typeof puppeteer.launch>[0] = {
       headless: true,
       args: [
         '--no-sandbox',
@@ -23,7 +32,19 @@ export async function POST(request: Request) {
         '--disable-dev-shm-usage',
         '--disable-gpu',
       ],
-    })
+    }
+
+    // 尝试使用系统安装的 Chrome
+    const fs = await import('fs')
+    for (const path of POSSIBLE_CHROME_PATHS) {
+      if (fs.existsSync(path)) {
+        launchOptions.executablePath = path
+        console.log('使用系统浏览器:', path)
+        break
+      }
+    }
+
+    browser = await puppeteer.launch(launchOptions)
 
     const page = await browser.newPage()
     

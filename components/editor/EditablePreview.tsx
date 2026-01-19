@@ -1,7 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
+import debounce from 'lodash/debounce'
 import EditorToolbar from './EditorToolbar'
+import useHistory from './hooks/useHistory'
+import ImageResizer from './ImageResizer'
 
 interface EditablePreviewProps {
   selectedFile: string | null
@@ -19,6 +23,29 @@ export default function EditablePreview({ selectedFile, content, onContentChange
   const selectionRef = useRef<{ startPath: number[], startOffset: number, endPath: number[], endOffset: number } | null>(null)
   const isUpdatingRef = useRef(false)
   const globalClickHandlerRef = useRef<((e: MouseEvent) => void) | null>(null)
+  const lastSyncedContentRef = useRef(content)
+  const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null)
+  const [iframeBody, setIframeBody] = useState<HTMLElement | null>(null)
+  
+  // History management
+  const { push: pushHistory, undo, redo, canUndo, canRedo } = useHistory(content)
+
+  // Create debounced sync function
+  const debouncedSync = useMemo(
+    () => debounce((newHtml: string) => {
+      onContentChange(newHtml)
+      lastSyncedContentRef.current = newHtml
+      pushHistory(newHtml)
+    }, 1000),
+    [onContentChange, pushHistory]
+  )
+
+  // Cancel debounce on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSync.cancel()
+    }
+  }, [debouncedSync])
 
   // Helper function to get node path
   const getNodePath = (node: Node): number[] => {
@@ -102,172 +129,29 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     const iframeDoc = iframeRef.current?.contentDocument
     if (!iframeDoc) return
     const newHtml = iframeDoc.documentElement.outerHTML
-    onContentChange(newHtml)
+    debouncedSync(newHtml)
     setTimeout(() => {
       isUpdatingRef.current = false
     }, 50)
-  }, [onContentChange])
+  }, [debouncedSync])
 
-  // Image resize functionality
-  const addImageResizer = (iframeDoc: Document) => {
-    const images = iframeDoc.querySelectorAll('img')
+  const handleUndo = useCallback(() => {
+    debouncedSync.flush()
+    const newHtml = undo()
+    if (newHtml !== null) {
+      onContentChange(newHtml)
+    }
+  }, [undo, onContentChange, debouncedSync])
 
-    images.forEach((img) => {
-      // Mark as initialized to prevent double-wrapping
-      if (img.hasAttribute('data-image-resizer')) {
-        return
-      }
-      img.setAttribute('data-image-resizer', 'true')
+  const handleRedo = useCallback(() => {
+    debouncedSync.flush()
+    const newHtml = redo()
+    if (newHtml !== null) {
+      onContentChange(newHtml)
+    }
+  }, [redo, onContentChange, debouncedSync])
 
-      // Create container
-      const container = iframeDoc.createElement('div')
-      container.className = 'image-container'
-      container.style.position = 'relative'
-      container.style.display = 'inline-block'
-      container.style.lineHeight = '0'
-
-      img.parentNode?.insertBefore(container, img)
-      container.appendChild(img)
-      img.style.display = 'block'
-
-      // Create handles
-      const handles = {
-        tl: iframeDoc.createElement('div'),
-        tr: iframeDoc.createElement('div'),
-        bl: iframeDoc.createElement('div'),
-        br: iframeDoc.createElement('div')
-      }
-
-      Object.values(handles).forEach(handle => {
-        handle.className = 'image-resize-handle'
-        handle.style.cssText = `
-          position: absolute;
-          width: 12px;
-          height: 12px;
-          background: #3b82f6;
-          border: 2px solid white;
-          border-radius: 50%;
-          z-index: 10000;
-          pointer-events: auto;
-          display: none;
-          box-shadow: 0 0 3px rgba(0,0,0,0.5);
-        `
-        container.appendChild(handle)
-      })
-
-      // Position handles
-      const positionHandles = () => {
-        handles.tl.style.left = '-6px'
-        handles.tl.style.top = '-6px'
-        handles.tl.style.cursor = 'nw-resize'
-
-        handles.tr.style.left = `${img.offsetWidth - 6}px`
-        handles.tr.style.top = '-6px'
-        handles.tr.style.cursor = 'ne-resize'
-
-        handles.bl.style.left = '-6px'
-        handles.bl.style.top = `${img.offsetHeight - 6}px`
-        handles.bl.style.cursor = 'sw-resize'
-
-        handles.br.style.left = `${img.offsetWidth - 6}px`
-        handles.br.style.top = `${img.offsetHeight - 6}px`
-        handles.br.style.cursor = 'se-resize'
-      }
-
-      // Dragging
-      let isDragging = false
-      let startX = 0
-      let startY = 0
-      let startLeft = 0
-      let startTop = 0
-      let hasMoved = false
-
-      img.addEventListener('mousedown', (e: MouseEvent) => {
-        if (Object.values(handles).includes(e.target as any)) return
-
-        e.preventDefault()
-        e.stopPropagation()
-
-        // Hide all handles first
-        const allHandles = iframeDoc.querySelectorAll('.image-resize-handle')
-        allHandles.forEach(h => (h as HTMLElement).style.display = 'none')
-
-        // Show handles for this image
-        showHandles()
-
-        isDragging = true
-        hasMoved = false
-        startX = e.clientX
-        startY = e.clientY
-        startLeft = container.offsetLeft
-        startTop = container.offsetTop
-
-        const onMouseMove = (e: MouseEvent) => {
-          if (!isDragging) return
-
-          const dx = e.clientX - startX
-          const dy = e.clientY - startY
-
-          // Only change to absolute and start moving after moved more than 3px
-          if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-            hasMoved = true
-            if (container.style.position !== 'absolute') {
-              container.style.position = 'absolute'
-              container.style.zIndex = '9999'
-            }
-            container.style.left = `${startLeft + dx}px`
-            container.style.top = `${startTop + dy}px`
-          }
-        }
-
-        const onMouseUp = () => {
-          isDragging = false
-          iframeDoc.removeEventListener('mousemove', onMouseMove)
-          iframeDoc.removeEventListener('mouseup', onMouseUp)
-        }
-
-        iframeDoc.addEventListener('mousemove', onMouseMove)
-        iframeDoc.addEventListener('mouseup', onMouseUp)
-      })
-
-      // Function to show handles
-      const showHandles = () => {
-        positionHandles()
-        Object.values(handles).forEach(h => h.style.display = 'block')
-      }
-
-      // Resize
-      Object.entries(handles).forEach(([corner, handle]) => {
-        handle.addEventListener('mousedown', (e: MouseEvent) => {
-          e.stopPropagation()
-          e.preventDefault()
-
-          const startX = e.clientX
-          const startWidth = img.offsetWidth
-          const ratio = startWidth / img.offsetHeight
-
-          const onMouseMove = (e: MouseEvent) => {
-            const dx = e.clientX - startX
-            const newWidth = Math.max(20, startWidth + dx)
-            const newHeight = newWidth / ratio
-
-            img.style.width = `${newWidth}px`
-            img.style.height = `${newHeight}px`
-            positionHandles()
-          }
-
-          const onMouseUp = () => {
-            iframeDoc.removeEventListener('mousemove', onMouseMove)
-            iframeDoc.removeEventListener('mouseup', onMouseUp)
-          }
-
-          iframeDoc.addEventListener('mousemove', onMouseMove)
-          iframeDoc.addEventListener('mouseup', onMouseUp)
-        })
-      })
-    })
-
-  }
+  // Image resize functionality moved to ImageResizer component
 
   useEffect(() => {
     if (!iframeRef.current || !content) return
@@ -277,6 +161,17 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
 
     if (!iframeDoc) return
+
+    // Check if we need to update
+    const isIframeEmpty = !iframeDoc.body || iframeDoc.body.childNodes.length === 0
+    // Only write if content is different from last synced (external update) OR if iframe is empty (reload/refresh)
+    if (content === lastSyncedContentRef.current && !isIframeEmpty) {
+      return
+    }
+
+    // If we are writing new content, cancel any pending debounced updates
+    debouncedSync.cancel()
+    lastSyncedContentRef.current = content
 
     // Save current state before updating
     if (!isInitialLoadRef.current && iframeDoc.body && isEditing) {
@@ -294,40 +189,36 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     iframeDoc.open()
     iframeDoc.write(content)
     iframeDoc.close()
-
-    // Add image resize handles after content is rendered
-    const initImageResizer = () => {
-      addImageResizer(iframeDoc)
+    
+    // Enable CSS mode for execCommand
+    try {
+      iframeDoc.execCommand('styleWithCSS', false, 'true')
+    } catch (e) {
+      console.warn('Failed to enable styleWithCSS', e)
     }
-
-    setTimeout(initImageResizer, 50)
+    
+    if (iframeDoc.body) {
+      setIframeBody(iframeDoc.body)
+    }
 
     // Create global click handler and store reference for cleanup
     // Use event delegation at document level
     const handleGlobalClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement
-
-      // Don't prevent event propagation - let image clicks work normally
-      // Check if clicked on an image with resizer
-      if (target.tagName === 'IMG' && target.hasAttribute('data-image-resizer')) {
+      
+      // Select image
+      if (target.tagName === 'IMG') {
+        setSelectedImage(target as HTMLImageElement)
+        return
+      }
+      
+      // Don't deselect if clicking on resizer handle
+      if (target.classList.contains('resizer-handle')) {
         return
       }
 
-      // Check if clicked on a handle
-      if (target.classList && target.classList.contains('image-resize-handle')) {
-        return
-      }
-
-      // Check if clicked on container
-      if (target.classList && target.classList.contains('image-container')) {
-        return
-      }
-
-      // Clicked outside - hide all visible handles
-      const visibleHandles = iframeDoc.querySelectorAll('.image-resize-handle[style*="block"], .image-resize-handle:not([style*="none"])')
-      visibleHandles.forEach(handle => {
-        (handle as HTMLElement).style.display = 'none'
-      })
+      // Deselect otherwise
+      setSelectedImage(null)
     }
 
     // Store reference for cleanup
@@ -382,64 +273,6 @@ export default function EditablePreview({ selectedFile, content, onContentChange
                 // If no selection, append to body
                 iframeDoc.body.appendChild(img)
               }
-
-              // Trigger image resizer initialization for the new image
-              setTimeout(() => {
-                const images = iframeDoc.querySelectorAll('img')
-                const lastImage = images[images.length - 1]
-                if (lastImage && !lastImage.hasAttribute('data-image-resizer')) {
-                  // Manually trigger addImageResizer for this specific image
-                  const container = iframeDoc.createElement('div')
-                  container.className = 'image-container'
-                  container.style.position = 'relative'
-                  container.style.display = 'inline-block'
-                  container.style.lineHeight = '0'
-
-                  lastImage.parentNode?.insertBefore(container, lastImage)
-                  container.appendChild(lastImage)
-                  lastImage.style.display = 'block'
-                  lastImage.setAttribute('data-image-resizer', 'true')
-
-                  // Create handles for this image
-                  const handles = {
-                    tl: iframeDoc.createElement('div'),
-                    tr: iframeDoc.createElement('div'),
-                    bl: iframeDoc.createElement('div'),
-                    br: iframeDoc.createElement('div')
-                  }
-
-                  Object.values(handles).forEach(handle => {
-                    handle.className = 'image-resize-handle'
-                    handle.style.cssText = `
-                      position: absolute;
-                      width: 12px;
-                      height: 12px;
-                      background: #3b82f6;
-                      border: 2px solid white;
-                      border-radius: 50%;
-                      z-index: 10000;
-                      pointer-events: auto;
-                      display: block;
-                      box-shadow: 0 0 3px rgba(0,0,0,0.5);
-                    `
-                    container.appendChild(handle)
-                  })
-
-                  // Position handles
-                  const positionHandles = () => {
-                    handles.tl.style.left = '-6px'
-                    handles.tl.style.top = '-6px'
-                    handles.tr.style.left = `${lastImage.offsetWidth - 6}px`
-                    handles.tr.style.top = '-6px'
-                    handles.bl.style.left = '-6px'
-                    handles.bl.style.top = `${lastImage.offsetHeight - 6}px`
-                    handles.br.style.left = `${lastImage.offsetWidth - 6}px`
-                    handles.br.style.top = `${lastImage.offsetHeight - 6}px`
-                  }
-
-                  positionHandles()
-                }
-              }, 50)
             }
           }
           reader.readAsDataURL(file)
@@ -454,28 +287,29 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isEditing) return
 
+      // Handle Undo/Redo
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        e.stopPropagation()
+        if (e.shiftKey) {
+          handleRedo()
+        } else {
+          handleUndo()
+        }
+        return
+      }
+
       // Check for Delete key
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        // Find visible handles (images being edited)
-        const visibleHandles = iframeDoc.querySelectorAll('.image-resize-handle[style*="block"]')
-
-        if (visibleHandles.length > 0) {
+        if (selectedImage) {
           e.preventDefault()
           e.stopPropagation()
-
-          // Get the first visible handle's image
-          const handle = visibleHandles[0] as HTMLElement
-          const container = handle.parentElement
-          const img = container?.querySelector('img')
-
-          if (img && container) {
-            // Remove container (which removes img and handles)
-            container.remove()
-
-            // Sync content change
-            const newHtml = iframeDoc.documentElement.outerHTML
-            onContentChange(newHtml)
-          }
+          selectedImage.remove()
+          setSelectedImage(null)
+          
+          const newHtml = iframeDoc.documentElement.outerHTML
+          debouncedSync(newHtml)
+          return
         }
       }
     }
@@ -531,8 +365,15 @@ export default function EditablePreview({ selectedFile, content, onContentChange
 
         iframeDoc.body.addEventListener('input', handleInput)
 
+        // Add blur handler to flush changes immediately when focus leaves editor
+        const handleBlur = () => {
+          debouncedSync.flush()
+        }
+        iframeDoc.body.addEventListener('blur', handleBlur)
+
         return () => {
           iframeDoc.body.removeEventListener('input', handleInput)
+          iframeDoc.body.removeEventListener('blur', handleBlur)
           // Remove global click handler
           if (globalClickHandlerRef.current) {
             iframeDoc.removeEventListener('click', globalClickHandlerRef.current, false)
@@ -609,9 +450,13 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       {/* EditorToolbar with minimal props */}
       <EditorToolbar
         iframeRef={iframeRef}
-        onContentChange={onContentChange}
+        onContentChange={debouncedSync}
         isEditing={!!selectedFile && isEditing}
         disabled={!selectedFile}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        canUndo={canUndo}
+        canRedo={canRedo}
       />
 
       {/* Editable Preview Area */}
@@ -634,6 +479,19 @@ export default function EditablePreview({ selectedFile, content, onContentChange
               className="w-full h-full min-h-[800px] border-0"
               title="Editable Preview"
             />
+            {iframeBody && createPortal(
+              <ImageResizer 
+                target={selectedImage}
+                iframeDoc={iframeRef.current?.contentDocument || null}
+                onUpdate={() => {
+                  if (iframeRef.current?.contentDocument) {
+                    const newHtml = iframeRef.current.contentDocument.documentElement.outerHTML
+                    debouncedSync(newHtml)
+                  }
+                }}
+              />,
+              iframeBody
+            )}
           </div>
         ) : (
           <div className="flex items-center justify-center h-full text-gray-400 text-lg">
