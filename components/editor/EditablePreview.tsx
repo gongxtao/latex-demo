@@ -188,6 +188,8 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     // Write content to iframe
     iframeDoc.open()
     iframeDoc.write(content)
+    // Inject a dedicated root for the resizer to avoid interference
+    iframeDoc.write('<div id="image-resizer-root" style="position: absolute; top: 0; left: 0; width: 0; height: 0; overflow: visible; z-index: 2147483647;"></div>')
     iframeDoc.close()
     
     // Enable CSS mode for execCommand
@@ -198,7 +200,9 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     }
     
     if (iframeDoc.body) {
-      setIframeBody(iframeDoc.body)
+      // Find our dedicated root
+      const resizerRoot = iframeDoc.getElementById('image-resizer-root')
+      setIframeBody(resizerRoot || iframeDoc.body)
     }
 
     // Create global click handler and store reference for cleanup
@@ -221,12 +225,21 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       setSelectedImage(null)
     }
 
+    // Handle mouseup as fallback for click (sometimes click is swallowed during editing)
+    const handleMouseUp = (e: MouseEvent) => {
+       const target = e.target as HTMLElement
+       if (target.tagName === 'IMG') {
+         setSelectedImage(target as HTMLImageElement)
+       }
+    }
+
     // Store reference for cleanup
     globalClickHandlerRef.current = handleGlobalClick
 
     // Add without event capture to let other events work normally
     setTimeout(() => {
       iframeDoc.addEventListener('click', handleGlobalClick, false)
+      iframeDoc.addEventListener('mouseup', handleMouseUp, false)
     }, 100)
 
     // Add paste event handler for Ctrl+V image insertion
@@ -456,7 +469,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       />
 
       {/* Editable Preview Area */}
-      <div className="flex-1 overflow-auto bg-gray-50 p-4">
+      <div className="flex-1 overflow-auto bg-gray-50 p-4 relative">
         {selectedFile ? (
           <div className="max-w-5xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden relative">
             {/* Generating Overlay */}
@@ -475,6 +488,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
               className="w-full h-full min-h-[800px] border-0"
               title="Editable Preview"
             />
+            {/* Render resizer outside iframe but position it over it, OR render inside if using Portal correctly */}
             {iframeBody && createPortal(
               <ImageResizer 
                 target={selectedImage}
