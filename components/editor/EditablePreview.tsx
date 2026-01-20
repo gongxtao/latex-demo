@@ -634,6 +634,16 @@ export default function EditablePreview({ selectedFile, content, onContentChange
              }
         }
         break
+      case 'resizeRow':
+        if (index !== undefined && typeof payload?.size === 'number') {
+             handler.setRowHeight(index, payload.size)
+        }
+        break
+      case 'resizeColumn':
+        if (index !== undefined && typeof payload?.size === 'number') {
+             handler.setColumnWidth(index, payload.size)
+        }
+        break
     }
 
     // Trigger sync

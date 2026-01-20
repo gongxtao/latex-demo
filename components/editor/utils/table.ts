@@ -1,3 +1,6 @@
+const MIN_CELL_WIDTH = 60
+const MIN_CELL_HEIGHT = 32
+
 export class TableHandler {
   private grid: (HTMLTableCellElement | null)[][] = []
   private rows: HTMLTableRowElement[] = []
@@ -248,8 +251,38 @@ export class TableHandler {
   private styleCell(cell: HTMLTableCellElement) {
       cell.style.border = '1px solid #ccc'
       cell.style.padding = '8px'
-      cell.style.minWidth = '60px'
-      cell.style.height = '32px'
+      cell.style.minWidth = `${MIN_CELL_WIDTH}px`
+      cell.style.height = `${MIN_CELL_HEIGHT}px`
+      cell.style.whiteSpace = 'normal'
+      cell.style.wordBreak = 'break-word'
+      cell.style.overflowWrap = 'break-word'
+  }
+
+  setRowHeight(rowIndex: number, height: number) {
+    if (rowIndex < 0 || rowIndex >= this.rows.length) return
+    const row = this.rows[rowIndex]
+    const nextHeight = Math.max(height, MIN_CELL_HEIGHT)
+    row.style.height = `${nextHeight}px`
+    Array.from(row.cells).forEach(cell => {
+      cell.style.height = `${nextHeight}px`
+    })
+  }
+
+  setColumnWidth(colIndex: number, width: number) {
+    if (colIndex < 0 || colIndex >= this.maxCols) return
+    const nextWidth = Math.max(width, MIN_CELL_WIDTH)
+    const processedCells = new Set<HTMLTableCellElement>()
+    for (let r = 0; r < this.rows.length; r++) {
+      const cell = this.grid[r][colIndex]
+      if (!cell) continue
+      if (processedCells.has(cell)) continue
+      processedCells.add(cell)
+      cell.style.width = `${nextWidth}px`
+      cell.style.minWidth = `${nextWidth}px`
+      cell.style.whiteSpace = 'normal'
+      cell.style.wordBreak = 'break-word'
+      cell.style.overflowWrap = 'break-word'
+    }
   }
 
   insertColumnEnd() {
@@ -342,8 +375,8 @@ export class TableHandler {
       const newCell = this.table.ownerDocument.createElement('td')
       newCell.style.border = '1px solid #ccc'
       newCell.style.padding = '8px'
-      newCell.style.minWidth = '60px'
-      newCell.style.height = '32px'
+      newCell.style.minWidth = `${MIN_CELL_WIDTH}px`
+      newCell.style.height = `${MIN_CELL_HEIGHT}px`
       row.appendChild(newCell)
     }
   }
@@ -398,8 +431,8 @@ export class TableHandler {
         const newCell = newRow.insertCell()
         newCell.style.border = '1px solid #ccc'
         newCell.style.padding = '8px'
-        newCell.style.minWidth = '60px'
-        newCell.style.height = '32px'
+        newCell.style.minWidth = `${MIN_CELL_WIDTH}px`
+        newCell.style.height = `${MIN_CELL_HEIGHT}px`
     }
   }
 

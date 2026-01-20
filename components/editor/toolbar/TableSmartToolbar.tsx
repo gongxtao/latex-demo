@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import SmartContextMenu from './SmartContextMenu'
+import { TableHandler } from '../utils/table'
 
 interface TableSmartToolbarProps {
   iframeRef: React.RefObject<HTMLIFrameElement>
@@ -29,6 +30,8 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
   const [hoveredCol, setHoveredCol] = useState<number | null>(null)
   const [selection, setSelection] = useState<{ startRow: number, startCol: number, endRow: number, endCol: number } | null>(null)
   const [isSelecting, setIsSelecting] = useState(false)
+  const [resizeHint, setResizeHint] = useState<{ type: 'row' | 'col', index: number, pos: number } | null>(null)
+  const [isResizing, setIsResizing] = useState(false)
   const [contextMenu, setContextMenu] = useState<{
     x: number
     y: number
@@ -37,6 +40,7 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
     rowIndex?: number
     colIndex?: number
   } | null>(null)
+  const resizeStateRef = useRef<{ type: 'row' | 'col', index: number, startPos: number, startSize: number, lastSize: number } | null>(null)
 
   const updateMetrics = useCallback(() => {
     if (!activeTable || !iframeRef.current) return
@@ -117,6 +121,65 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
     }
   }, [activeTable, iframeRef, updateMetrics])
 
+  const getResizeHint = useCallback((clientX: number, clientY: number) => {
+    if (!metrics) return null
+    const threshold = 4
+    const tableRight = metrics.tableLeft + metrics.tableWidth
+    const tableBottom = metrics.tableTop + metrics.tableHeight
+    const withinX = clientX >= metrics.tableLeft - threshold && clientX <= tableRight + threshold
+    const withinY = clientY >= metrics.tableTop - threshold && clientY <= tableBottom + threshold
+    if (!withinX || !withinY) return null
+
+    let best: { type: 'row' | 'col', index: number, pos: number, distance: number } | null = null
+
+    if (clientX >= metrics.tableLeft && clientX <= tableRight) {
+      if (metrics.rows.length > 0) {
+        const firstTop = metrics.rows[0].top
+        const distTop = Math.abs(clientY - firstTop)
+        if (distTop <= threshold) {
+          best = { type: 'row', index: 0, pos: firstTop, distance: distTop }
+        }
+        metrics.rows.forEach((row, index) => {
+          const pos = row.top + row.height
+          const dist = Math.abs(clientY - pos)
+          if (dist <= threshold && (!best || dist < best.distance)) {
+            best = { type: 'row', index, pos, distance: dist }
+          }
+        })
+      }
+    }
+
+    if (clientY >= metrics.tableTop && clientY <= tableBottom) {
+      if (metrics.cols.length > 0) {
+        const firstLeft = metrics.cols[0].left
+        const distLeft = Math.abs(clientX - firstLeft)
+        if (distLeft <= threshold && (!best || distLeft < best.distance)) {
+          best = { type: 'col', index: 0, pos: firstLeft, distance: distLeft }
+        }
+        metrics.cols.forEach((col, index) => {
+          const pos = col.left + col.width
+          const dist = Math.abs(clientX - pos)
+          if (dist <= threshold && (!best || dist < best.distance)) {
+            best = { type: 'col', index, pos, distance: dist }
+          }
+        })
+      }
+    }
+
+    if (!best) return null
+    return { type: best.type, index: best.index, pos: best.pos }
+  }, [metrics])
+
+  const applyResize = useCallback((type: 'row' | 'col', index: number, size: number) => {
+    if (!activeTable) return
+    const handler = new TableHandler(activeTable)
+    if (type === 'row') {
+      handler.setRowHeight(index, size)
+    } else {
+      handler.setColumnWidth(index, size)
+    }
+  }, [activeTable])
+
   // Handle events from iframe
   useEffect(() => {
       const iframe = iframeRef.current
@@ -128,6 +191,24 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
           
           // If not left click, ignore
           if (e.button !== 0) return
+
+          if (resizeHint) {
+            const startPos = resizeHint.type === 'row' ? e.clientY : e.clientX
+            const startSize = resizeHint.type === 'row'
+              ? metrics.rows[resizeHint.index]?.height || 0
+              : metrics.cols[resizeHint.index]?.width || 0
+            resizeStateRef.current = {
+              type: resizeHint.type,
+              index: resizeHint.index,
+              startPos,
+              startSize,
+              lastSize: startSize
+            }
+            setIsResizing(true)
+            setIsSelecting(false)
+            e.preventDefault()
+            return
+          }
 
           let clientX = e.clientX
           let clientY = e.clientY
@@ -187,37 +268,66 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
       }
       
       const onMouseMove = (e: MouseEvent) => {
-          if (!isSelecting) return
-          
-          e.preventDefault() 
-          
-          let clientX = e.clientX
-          let clientY = e.clientY
-          
-          let gridR = -1
-          for (let i = 0; i < metrics.rows.length; i++) {
-             const row = metrics.rows[i]
-             if (clientY >= row.top && clientY <= row.top + row.height) {
-                 gridR = i
-                 break
-             }
+          if (isResizing) {
+            const state = resizeStateRef.current
+            if (!state) return
+            const delta = state.type === 'row' ? e.clientY - state.startPos : e.clientX - state.startPos
+            const nextSize = state.startSize + delta
+            state.lastSize = nextSize
+            setResizeHint({ type: state.type, index: state.index, pos: state.type === 'row' ? e.clientY : e.clientX })
+            e.preventDefault()
+            return
           }
-          
-          let gridC = -1
-          for (let i = 0; i < metrics.cols.length; i++) {
-             const col = metrics.cols[i]
-             if (clientX >= col.left && clientX <= col.left + col.width) {
-                 gridC = i
-                 break
-             }
+
+          if (isSelecting) {
+            e.preventDefault() 
+            let clientX = e.clientX
+            let clientY = e.clientY
+            let gridR = -1
+            for (let i = 0; i < metrics.rows.length; i++) {
+               const row = metrics.rows[i]
+               if (clientY >= row.top && clientY <= row.top + row.height) {
+                   gridR = i
+                   break
+               }
+            }
+            
+            let gridC = -1
+            for (let i = 0; i < metrics.cols.length; i++) {
+               const col = metrics.cols[i]
+               if (clientX >= col.left && clientX <= col.left + col.width) {
+                   gridC = i
+                   break
+               }
+            }
+            
+            if (gridR !== -1 && gridC !== -1) {
+                setSelection(prev => prev ? { ...prev, endRow: gridR, endCol: gridC } : null)
+            }
+            return
           }
-          
-          if (gridR !== -1 && gridC !== -1) {
-              setSelection(prev => prev ? { ...prev, endRow: gridR, endCol: gridC } : null)
+
+          const hint = getResizeHint(e.clientX, e.clientY)
+          setResizeHint(hint)
+          if (doc.body) {
+            doc.body.style.cursor = hint ? (hint.type === 'row' ? 'row-resize' : 'col-resize') : ''
           }
       }
       
-      const onMouseUp = () => {
+      const onMouseUp = (e: MouseEvent) => {
+          if (isResizing) {
+            const state = resizeStateRef.current
+            if (state) {
+              onAction(state.type === 'row' ? 'resizeRow' : 'resizeColumn', { index: state.index, size: state.lastSize })
+            }
+            resizeStateRef.current = null
+            setIsResizing(false)
+            setResizeHint(null)
+            if (doc.body) {
+              doc.body.style.cursor = ''
+            }
+            return
+          }
           setIsSelecting(false)
       }
 
@@ -304,8 +414,11 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
           doc.removeEventListener('mousemove', onMouseMove)
           doc.removeEventListener('mouseup', onMouseUp)
           doc.removeEventListener('contextmenu', onContextMenu)
+          if (doc.body) {
+            doc.body.style.cursor = ''
+          }
       }
-  }, [iframeRef, metrics, activeTable, isSelecting, readonly, selection])
+  }, [iframeRef, metrics, activeTable, isSelecting, isResizing, readonly, selection, resizeHint, getResizeHint, applyResize, updateMetrics, onAction])
 
   if (!activeTable || !metrics || readonly) return null
 
@@ -366,11 +479,39 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
       }
   }
 
+  const getResizeLineStyle = () => {
+      if (!resizeHint) return { display: 'none' }
+      if (resizeHint.type === 'row') {
+        return {
+          top: resizeHint.pos - 1,
+          left: metrics.tableLeft,
+          width: metrics.tableWidth,
+          height: 2,
+          display: 'block',
+          position: 'absolute' as const,
+          backgroundColor: '#3b82f6',
+          pointerEvents: 'none' as const,
+          zIndex: 6
+        }
+      }
+      return {
+        top: metrics.tableTop,
+        left: resizeHint.pos - 1,
+        width: 2,
+        height: metrics.tableHeight,
+        display: 'block',
+        position: 'absolute' as const,
+        backgroundColor: '#3b82f6',
+        pointerEvents: 'none' as const,
+        zIndex: 6
+      }
+  }
+
   return (
     <div className="absolute inset-0 z-50 pointer-events-none">
       {/* Interaction Layer over table - REMOVED blocking div */}
       
-      {/* Selection Highlight */}
+      <div style={getResizeLineStyle()} />
       <div style={getSelectionStyle()} />
 
       {/* Column Indicators */}
