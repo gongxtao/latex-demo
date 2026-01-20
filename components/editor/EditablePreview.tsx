@@ -129,13 +129,43 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     }
   }, [])
 
+  // Helper to get clean HTML without editor artifacts
+  const getCleanHtml = (doc: Document): string => {
+    // Clone the document element to avoid modifying the live DOM
+    const clone = doc.documentElement.cloneNode(true) as HTMLElement
+    
+    // Remove all resizer roots (handle potential duplicates from bad saves)
+    const resizerRoots = clone.querySelectorAll('#image-resizer-root')
+    resizerRoots.forEach(el => el.remove())
+    
+    // Remove all editor styles
+    const editorStyles = clone.querySelectorAll('#editor-style')
+    editorStyles.forEach(el => el.remove())
+
+    // Remove contenteditable attributes from body and all children
+    if (clone.tagName === 'BODY' || clone.querySelector('body')) {
+       const body = clone.tagName === 'BODY' ? clone : clone.querySelector('body')
+       if (body) {
+         body.removeAttribute('contenteditable')
+         body.removeAttribute('style') // Remove outline/cursor styles
+         
+         // Remove contenteditable from all descendants
+         const editables = body.querySelectorAll('[contenteditable]')
+         editables.forEach(el => el.removeAttribute('contenteditable'))
+       }
+    }
+    
+    return clone.outerHTML
+  }
+
   // Handle input changes
   const handleInput = useCallback(() => {
     if (isUpdatingRef.current) return
     isUpdatingRef.current = true
     const iframeDoc = iframeRef.current?.contentDocument
     if (!iframeDoc) return
-    const newHtml = iframeDoc.documentElement.outerHTML
+    
+    const newHtml = getCleanHtml(iframeDoc)
     debouncedSync(newHtml)
     setTimeout(() => {
       isUpdatingRef.current = false
@@ -215,6 +245,13 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     // Create global click handler and store reference for cleanup
     // Use event delegation at document level
     const handleGlobalClick = (e: MouseEvent) => {
+      // If not in edit mode, prevent selection and interaction
+      if (!isEditing) {
+        setSelectedImage(null)
+        setContextMenu(null)
+        return
+      }
+
       const target = e.target as HTMLElement
       
       // Select image
@@ -222,16 +259,23 @@ export default function EditablePreview({ selectedFile, content, onContentChange
         setSelectedImage(target as HTMLImageElement)
         return
       }
+    }
+    
+    // Handle global mousedown for deselection (more reliable than click)
+    const handleGlobalMouseDown = (e: MouseEvent) => {
+      if (!isEditing) return
       
-      // Don't deselect if clicking on resizer handle
-      if (target.classList.contains('resizer-handle')) {
+      const target = e.target as HTMLElement
+      
+      // Don't deselect if clicking on image or resizer handle
+      if (target.tagName === 'IMG' || target.classList.contains('resizer-handle')) {
         return
       }
       
-      // Close context menu on click
+      // Close context menu
       setContextMenu(null)
 
-      // Deselect otherwise
+      // Deselect image
       setSelectedImage(null)
     }
     
@@ -265,6 +309,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
 
     // Handle mouseup as fallback for click (sometimes click is swallowed during editing)
     const handleMouseUp = (e: MouseEvent) => {
+       if (!isEditing) return
        const target = e.target as HTMLElement
        if (target.tagName === 'IMG') {
          setSelectedImage(target as HTMLImageElement)
@@ -276,9 +321,33 @@ export default function EditablePreview({ selectedFile, content, onContentChange
 
     // Add without event capture to let other events work normally
     setTimeout(() => {
+      // Use capture for mousedown to ensure we catch it before any stopPropagation
+      iframeDoc.addEventListener('mousedown', handleGlobalMouseDown, true)
       iframeDoc.addEventListener('click', handleGlobalClick, false)
       iframeDoc.addEventListener('mouseup', handleMouseUp, false)
       iframeDoc.addEventListener('contextmenu', handleContextMenu, false)
+      
+      // Listen for selection changes to clear image selection when cursor moves elsewhere
+      iframeDoc.addEventListener('selectionchange', () => {
+        if (!isEditing) return
+        
+        const selection = iframeDoc.getSelection()
+        if (selection && !selection.isCollapsed) {
+           // If user selects text, clear image selection
+           // But wait a tick to ensure it wasn't just a click on the image itself
+           setTimeout(() => {
+             const newSelection = iframeDoc.getSelection()
+             // If selection is now a range (text selected), or caret is not in an image context
+             // Note: This is a bit heuristic. The reliable way is mousedown.
+             // We mainly use this to clear when typing or arrow keys move cursor.
+             if (newSelection && newSelection.rangeCount > 0) {
+               // Check if the selection is actually the image we selected
+               // Browsers handle image selection differently.
+               // For now, let's rely mostly on mousedown/keydown.
+             }
+           }, 0)
+        }
+      })
     }, 100)
 
     // Add paste event handler for Ctrl+V image insertion
@@ -359,7 +428,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
           selectedImage.remove()
           setSelectedImage(null)
           
-          const newHtml = iframeDoc.documentElement.outerHTML
+          const newHtml = getCleanHtml(iframeDoc)
           debouncedSync(newHtml)
           return
         }
@@ -397,6 +466,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
 
         // Add editing styles
         const style = iframeDoc.createElement('style')
+        style.id = 'editor-style'
         style.textContent = `
           body[contenteditable="true"] {
             cursor: text;
@@ -429,6 +499,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
           // Remove global click handler
           if (globalClickHandlerRef.current) {
             iframeDoc.removeEventListener('click', globalClickHandlerRef.current, false)
+            iframeDoc.removeEventListener('mousedown', handleGlobalMouseDown, true)
           }
         }
       }
@@ -440,19 +511,27 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     }
   }, [content, isEditing, handleInput, onContentChange, restoreSelection, saveSelection])
 
-  const toggleEditMode = () => {
+  const toggleEditMode = useCallback(() => {
     // If we're exiting edit mode, sync the latest content first
     if (isEditing) {
       const iframe = iframeRef.current
       const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document
       if (iframeDoc) {
-        const latestHtml = iframeDoc.documentElement.outerHTML
+        const latestHtml = getCleanHtml(iframeDoc)
         onContentChange(latestHtml)
       }
+      
+      // Clear all selection states immediately
+      setSelectedImage(null)
+      setContextMenu(null)
+      // Clear iframe body to ensure Portals are unmounted
+      setIframeBody(null)
     }
-    setIsEditing(!isEditing)
+    
+    // Toggle state
+    setIsEditing(prev => !prev)
     setPreviewKey(prev => prev + 1)
-  }
+  }, [isEditing, onContentChange])
 
   const handleRefresh = () => {
     setPreviewKey(prev => prev + 1)
@@ -490,7 +569,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
 
     // Trigger sync
     if (iframeRef.current?.contentDocument) {
-      const newHtml = iframeRef.current.contentDocument.documentElement.outerHTML
+      const newHtml = getCleanHtml(iframeRef.current.contentDocument)
       debouncedSync(newHtml)
     }
   }
@@ -565,13 +644,13 @@ export default function EditablePreview({ selectedFile, content, onContentChange
               title="Editable Preview"
             />
             {/* Render resizer outside iframe but position it over it, OR render inside if using Portal correctly */}
-            {iframeBody && createPortal(
+            {isEditing && iframeBody && createPortal(
         <ImageResizer 
           target={selectedImage}
           iframeDoc={iframeRef.current?.contentDocument || null}
           onUpdate={() => {
             if (iframeRef.current?.contentDocument) {
-              const newHtml = iframeRef.current.contentDocument.documentElement.outerHTML
+              const newHtml = getCleanHtml(iframeRef.current.contentDocument)
               debouncedSync(newHtml)
             }
           }}
@@ -580,7 +659,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       )}
 
       {/* Table Context Menu */}
-      {contextMenu && (
+      {isEditing && contextMenu && (
         <TableContextMenu
           target={contextMenu.target}
           position={contextMenu.position}
