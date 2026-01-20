@@ -14,10 +14,11 @@ import ButtonRenderer from './toolbar/core/ButtonRenderer'
 
 // Groups
 import ToolbarGroup from './toolbar/groups/ToolbarGroup'
+import ToolbarSeparator from './toolbar/groups/ToolbarSeparator'
 
 // Hooks
 import { useEditorCommands } from './toolbar/hooks/useEditorCommands'
-import { useEditorState, EditorState } from './toolbar/hooks/useEditorState'
+import { useEditorState } from './toolbar/hooks/useEditorState'
 
 // Config
 import { BUTTON_GROUPS, TOOLBAR_CONFIG } from './toolbar/config'
@@ -33,10 +34,6 @@ import {
   RedoIcon,
   IndentIcon,
   OutdentIcon,
-  AddRowIcon,
-  DeleteRowIcon,
-  AddColumnIcon,
-  DeleteColumnIcon,
   SuperscriptIcon,
   SubscriptIcon,
   RemoveFormatIcon
@@ -67,10 +64,6 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
   'link': LinkIcon,
   'unlink': UnlinkIcon,
   'hr': DividerIcon,
-  'add-row': AddRowIcon,
-  'delete-row': DeleteRowIcon,
-  'add-column': AddColumnIcon,
-  'delete-column': DeleteColumnIcon,
   'superscript': SuperscriptIcon,
   'subscript': SubscriptIcon,
   'clear-format': RemoveFormatIcon
@@ -140,8 +133,6 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const indentButtons = assignIconsToConfigs(BUTTON_GROUPS.indent)
   const listButtons = assignIconsToConfigs(BUTTON_GROUPS.lists)
   const insertButtons = assignIconsToConfigs(BUTTON_GROUPS.insert)
-  const tableOperationButtons = assignIconsToConfigs(BUTTON_GROUPS.tableOperations)
-  const utilityButtons = assignIconsToConfigs(BUTTON_GROUPS.utility)
 
   // Configs for selects
   const fontFamilyConfig = TOOLBAR_CONFIG.rows[0].groups.find(g => g.id === 'font-family')?.items[0]
@@ -221,9 +212,10 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             />
           ))}
         </ToolbarGroup>
+        <ToolbarSeparator />
 
         {/* Font Family */}
-        <ToolbarGroup id="font-family" label="Font">
+        <ToolbarGroup id="font-family">
           {fontFamilyConfig && (
             <ButtonRenderer
               key={fontFamilyConfig.id}
@@ -234,9 +226,10 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             />
           )}
         </ToolbarGroup>
+        <ToolbarSeparator />
 
         {/* Font Size */}
-        <ToolbarGroup id="font-size" label="Size">
+        <ToolbarGroup id="font-size">
           {fontSizeConfig && (
             <ButtonRenderer
               key={fontSizeConfig.id}
@@ -247,6 +240,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             />
           )}
         </ToolbarGroup>
+        <ToolbarSeparator />
 
         {/* Text Formatting */}
         <ToolbarGroup id="format">
@@ -260,6 +254,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             />
           ))}
         </ToolbarGroup>
+        <ToolbarSeparator />
 
         {/* Colors */}
         <ToolbarGroup id="colors">
@@ -272,6 +267,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             />
           ))}
         </ToolbarGroup>
+        <ToolbarSeparator />
 
         {/* Text Alignment */}
         <ToolbarGroup id="alignment">
@@ -285,6 +281,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             />
           ))}
         </ToolbarGroup>
+        <ToolbarSeparator />
 
         {/* Indentation */}
         <ToolbarGroup id="indent">
@@ -313,6 +310,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             />
           ))}
         </ToolbarGroup>
+        <ToolbarSeparator />
 
         {/* Insert */}
         <ToolbarGroup id="insert">
@@ -327,21 +325,10 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             />
           ))}
         </ToolbarGroup>
-
-        {/* Table Operations */}
-        <ToolbarGroup id="table-operations">
-          {tableOperationButtons.map(config => (
-            <ButtonRenderer
-              key={config.id}
-              config={config}
-              disabled={disabled}
-              onCommand={handleCommand}
-            />
-          ))}
-        </ToolbarGroup>
+        <ToolbarSeparator />
 
         {/* Heading Format */}
-        <ToolbarGroup id="heading" label="Format">
+        <ToolbarGroup id="heading">
           {headingConfig && (
             <ButtonRenderer
               key={headingConfig.id}
@@ -351,18 +338,6 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
               onSelectChange={handleSelectChange}
             />
           )}
-        </ToolbarGroup>
-
-        {/* Utility */}
-        <ToolbarGroup id="utility">
-          {utilityButtons.map(config => (
-            <ButtonRenderer
-              key={config.id}
-              config={config}
-              disabled={disabled}
-              onCommand={handleCommand}
-            />
-          ))}
         </ToolbarGroup>
       </ToolbarRow>
     </div>

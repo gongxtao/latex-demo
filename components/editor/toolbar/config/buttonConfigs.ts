@@ -55,7 +55,8 @@ export type ButtonConfig = CommandButtonConfig | ToggleButtonConfig | PickerButt
 
 export const HISTORY_BUTTONS: CommandButtonConfig[] = [
   { id: 'undo', type: 'command', command: 'undo', label: 'Undo', shortcut: 'Ctrl+Z' },
-  { id: 'redo', type: 'command', command: 'redo', label: 'Redo', shortcut: 'Ctrl+Y' }
+  { id: 'redo', type: 'command', command: 'redo', label: 'Redo', shortcut: 'Ctrl+Y' },
+  { id: 'clear-format', type: 'command', command: 'removeFormat', label: 'Clear formatting', shortcut: 'Ctrl+Shift+N' }
 ]
 
 // ============================================================================
@@ -122,23 +123,10 @@ export const INSERT_BUTTONS: (CommandButtonConfig | PickerButtonConfig)[] = [
 ]
 
 // ============================================================================
-// Table Operation Buttons
-// ============================================================================
-
-export const TABLE_OPERATION_BUTTONS: CommandButtonConfig[] = [
-  { id: 'add-row', type: 'command', command: 'addTableRow', label: 'Add row' },
-  { id: 'delete-row', type: 'command', command: 'deleteTableRow', label: 'Delete row' },
-  { id: 'add-column', type: 'command', command: 'addTableColumn', label: 'Add column' },
-  { id: 'delete-column', type: 'command', command: 'deleteTableColumn', label: 'Delete column' }
-]
-
-// ============================================================================
 // Utility Buttons
 // ============================================================================
 
-export const UTILITY_BUTTONS: CommandButtonConfig[] = [
-  { id: 'clear-format', type: 'command', command: 'removeFormat', label: 'Clear formatting', shortcut: 'Ctrl+Shift+N' }
-]
+export const UTILITY_BUTTONS: CommandButtonConfig[] = []
 
 // ============================================================================
 // Export groups for use in toolbar config
@@ -152,6 +140,5 @@ export const BUTTON_GROUPS = {
   indent: INDENT_BUTTONS,
   lists: LIST_BUTTONS,
   insert: INSERT_BUTTONS,
-  tableOperations: TABLE_OPERATION_BUTTONS,
   utility: UTILITY_BUTTONS
 } as const

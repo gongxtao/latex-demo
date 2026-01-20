@@ -595,12 +595,14 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       case 'insertColumnAfter':
       case 'deleteColumn':
         if (index !== undefined && activeTable.rows.length > 0) {
-             // Use the cell in the first row as reference
-             const cell = activeTable.rows[0].cells[index]
-             if (cell) {
+             if (action === 'deleteColumn') {
+               handler.deleteColumnAt(index)
+             } else {
+               const cell = activeTable.rows[0].cells[index]
+               if (cell) {
                  if (action === 'insertColumnBefore') handler.insertColumnBefore(cell)
                  if (action === 'insertColumnAfter') handler.insertColumnAfter(cell)
-                 if (action === 'deleteColumn') handler.deleteColumn(cell)
+               }
              }
         }
         break

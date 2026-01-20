@@ -91,21 +91,34 @@ export const useEditorState = ({ iframeRef }: UseEditorStateProps) => {
     // Helper to get computed style
     const getComputedStyleValue = (prop: string): string => {
       const selection = doc.getSelection()
-      if (!selection || selection.rangeCount === 0) return ''
-      
-      let node = selection.anchorNode
-      if (!node) return ''
-      
-      if (node.nodeType === 3) { // Text node
+      const win = iframe.contentWindow || window
+      const fallback = win.getComputedStyle(doc.body)[prop as any] || ''
+      if (!selection || selection.rangeCount === 0) return fallback
+
+      const range = selection.getRangeAt(0)
+      let node: Node | null = range.startContainer || selection.focusNode || selection.anchorNode
+      if (node && node.nodeType === 3) {
         node = node.parentElement
       }
-      
-      if (node && node instanceof Element) {
-        // Need to use the window of the iframe
-        const win = iframe.contentWindow || window
-        return win.getComputedStyle(node)[prop as any] || ''
+
+      if (!node || !(node instanceof Element)) return fallback
+
+      let element: Element | null = node
+      while (element && element !== doc.body) {
+        if (prop === 'fontFamily') {
+          const face = element.getAttribute('face')
+          const inlineFont = (element as HTMLElement).style.fontFamily
+          if (face || inlineFont) {
+            const computed = win.getComputedStyle(element)[prop as any] || ''
+            return computed || face || inlineFont
+          }
+        }
+        const computed = win.getComputedStyle(element)[prop as any] || ''
+        if (computed) return computed
+        element = element.parentElement
       }
-      return ''
+
+      return fallback
     }
 
     // Determine alignment
@@ -113,6 +126,9 @@ export const useEditorState = ({ iframeRef }: UseEditorStateProps) => {
     if (queryState('justifyCenter')) align = 'center'
     else if (queryState('justifyRight')) align = 'right'
     else if (queryState('justifyFull')) align = 'justify'
+
+    const rawFontName = getComputedStyleValue('fontFamily') || queryValue('fontName') || 'Arial'
+    const normalizedFontName = rawFontName.replace(/['"]/g, '').split(',')[0]?.trim() || 'Arial'
 
     setEditorState({
       isBold: queryState('bold'),
@@ -126,7 +142,7 @@ export const useEditorState = ({ iframeRef }: UseEditorStateProps) => {
       
       align,
       
-      fontName: getComputedStyleValue('fontFamily').replace(/['"]/g, '') || 'Arial', // Remove quotes
+      fontName: normalizedFontName,
       fontSize: getComputedStyleValue('fontSize') || '16px',
       formatBlock: queryValue('formatBlock') || 'p',
       

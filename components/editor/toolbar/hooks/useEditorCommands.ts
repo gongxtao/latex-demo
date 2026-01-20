@@ -5,7 +5,6 @@
  */
 
 import { useRef, RefObject } from 'react'
-import { TableHandler } from '../../utils/table'
 import { applyStyle } from '../../utils/style'
 
 export interface UseEditorCommandsOptions {
@@ -171,28 +170,6 @@ export function useEditorCommands({
     // Custom styles
     fontFamily: (name: string) => applyCustomStyle('fontFamily', name),
     fontSize: (size: string) => applyCustomStyle('fontSize', size),
-
-    // Table operations
-    addTableRow: () => applyFormat(doc => {
-      const table = doc.querySelector('table')
-      if (!table) return
-      new TableHandler(table).insertRowEnd()
-    }),
-    deleteTableRow: () => applyFormat(doc => {
-      const table = doc.querySelector('table')
-      if (!table) return
-      new TableHandler(table).deleteRowEnd()
-    }),
-    addTableColumn: () => applyFormat(doc => {
-      const table = doc.querySelector('table')
-      if (!table) return
-      new TableHandler(table).insertColumnEnd()
-    }),
-    deleteTableColumn: () => applyFormat(doc => {
-      const table = doc.querySelector('table')
-      if (!table) return
-      new TableHandler(table).deleteColumnEnd()
-    }),
 
     // Insert table
     insertTable: (rows: number, cols: number) => {

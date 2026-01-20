@@ -150,7 +150,7 @@ const ButtonRenderer: React.FC<ButtonRendererProps> = ({
             }))}
             disabled={disabled}
             onChange={(val) => onSelectChange?.(config.id, val)}
-            width={160}
+            width={120}
             renderItem={(item) => (
               <span style={{ fontFamily: item.value }}>{item.label}</span>
             )}
@@ -168,7 +168,7 @@ const ButtonRenderer: React.FC<ButtonRendererProps> = ({
             options={config.options}
             disabled={disabled}
             onChange={(val) => onSelectChange?.(config.id, val)}
-            width={80}
+            width={110}
             editable={true}
           />
         )

@@ -44,13 +44,12 @@ export const TOOLBAR_CONFIG: ToolbarConfig = {
         },
         {
           id: 'font-family',
-          label: 'Font',
           items: [
             {
               id: 'font-family',
               type: 'select',
               label: 'Font family selector',
-              selectLabel: 'Font',
+              selectLabel: '',
               options: FONT_FAMILIES,
               defaultValue: 'Arial'
             }
@@ -58,13 +57,12 @@ export const TOOLBAR_CONFIG: ToolbarConfig = {
         },
         {
           id: 'font-size',
-          label: 'Size',
           items: [
             {
               id: 'font-size',
               type: 'select',
               label: 'Font size selector',
-              selectLabel: 'Size',
+              selectLabel: '',
               options: FONT_SIZES,
               defaultValue: '16px'
             }
@@ -106,13 +104,12 @@ export const TOOLBAR_CONFIG: ToolbarConfig = {
         },
         {
           id: 'heading',
-          label: 'Format',
           items: [
             {
               id: 'heading',
               type: 'select',
               label: 'Heading format selector',
-              selectLabel: 'Format',
+              selectLabel: '',
               options: HEADING_OPTIONS,
               defaultValue: ''
             }

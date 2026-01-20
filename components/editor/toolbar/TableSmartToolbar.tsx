@@ -242,8 +242,6 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
           const handler = new TableHandler(activeTable)
           const bounds = handler.getCellBounds(cell as HTMLTableCellElement)
           if (bounds) {
-            clearDocSelection()
-            e.preventDefault()
             setIsSelecting(true)
             setSelection({
               startRow: bounds.startRow,
