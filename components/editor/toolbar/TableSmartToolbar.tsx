@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
-import { createPortal } from 'react-dom'
 import SmartContextMenu from './SmartContextMenu'
 import { TableHandler } from '../utils/table'
 
@@ -425,59 +424,12 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
   const BAR_SIZE = 24
   const GAP = 2
 
-  const getCellCoords = (x: number, y: number) => {
-      if (!iframeRef.current) return { r: -1, c: -1 }
-      const iframeRect = iframeRef.current.getBoundingClientRect()
-      
-      const mx = x - iframeRect.left
-      const my = y - iframeRect.top
-      
-      let r = -1
-      for (let i = 0; i < metrics.rows.length; i++) {
-          const row = metrics.rows[i]
-          if (my >= row.top && my <= row.top + row.height) {
-              r = i
-              break
-          }
-      }
-      
-      let c = -1
-      for (let i = 0; i < metrics.cols.length; i++) {
-          const col = metrics.cols[i]
-          if (mx >= col.left && mx <= col.left + col.width) {
-              c = i
-              break
-          }
-      }
-      
-      return { r, c }
-  }
-
-  const getSelectionStyle = () => {
-      if (!selection) return { display: 'none' }
-      
-      const r1 = Math.min(selection.startRow, selection.endRow)
-      const r2 = Math.max(selection.startRow, selection.endRow)
-      const c1 = Math.min(selection.startCol, selection.endCol)
-      const c2 = Math.max(selection.startCol, selection.endCol)
-      
-      if (r1 >= metrics.rows.length || c1 >= metrics.cols.length) return { display: 'none' }
-      
-      const top = metrics.rows[r1].top
-      const height = (metrics.rows[r2].top + metrics.rows[r2].height) - top
-      const left = metrics.cols[c1].left
-      const width = (metrics.cols[c2].left + metrics.cols[c2].width) - left
-      
-      return {
-          top, left, width, height,
-          display: 'block',
-          position: 'absolute' as const,
-          backgroundColor: 'rgba(59, 130, 246, 0.2)',
-          border: '2px solid #3b82f6',
-          pointerEvents: 'none' as const,
-          zIndex: 5
-      }
-  }
+  const selectionBounds = selection ? {
+    startRow: Math.min(selection.startRow, selection.endRow),
+    endRow: Math.max(selection.startRow, selection.endRow),
+    startCol: Math.min(selection.startCol, selection.endCol),
+    endCol: Math.max(selection.startCol, selection.endCol)
+  } : null
 
   const getResizeLineStyle = () => {
       if (!resizeHint) return { display: 'none' }
@@ -512,7 +464,6 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
       {/* Interaction Layer over table - REMOVED blocking div */}
       
       <div style={getResizeLineStyle()} />
-      <div style={getSelectionStyle()} />
 
       {/* Column Indicators */}
       <div className="absolute pointer-events-auto flex" style={{
@@ -526,6 +477,7 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
             className={`
               group relative border border-gray-300 bg-gray-50 hover:bg-blue-50 cursor-pointer flex items-center justify-center text-xs text-gray-500
               ${hoveredCol === index ? 'bg-blue-100 border-blue-300' : ''}
+              ${selectionBounds && index >= selectionBounds.startCol && index <= selectionBounds.endCol ? 'bg-blue-200 border-blue-400 text-blue-700' : ''}
             `}
             style={{ width: col.width, height: BAR_SIZE }}
             onMouseEnter={() => setHoveredCol(index)}
@@ -566,6 +518,7 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
             className={`
               group relative border border-gray-300 bg-gray-50 hover:bg-blue-50 cursor-pointer flex items-center justify-center text-xs text-gray-500
               ${hoveredRow === index ? 'bg-blue-100 border-blue-300' : ''}
+              ${selectionBounds && index >= selectionBounds.startRow && index <= selectionBounds.endRow ? 'bg-blue-200 border-blue-400 text-blue-700' : ''}
             `}
             style={{ height: row.height, width: BAR_SIZE }}
             onMouseEnter={() => setHoveredRow(index)}
