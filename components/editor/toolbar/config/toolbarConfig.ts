@@ -43,6 +43,19 @@ export const TOOLBAR_CONFIG: ToolbarConfig = {
           items: [] // Will be populated with button config
         },
         {
+          id: 'heading',
+          items: [
+            {
+              id: 'heading',
+              type: 'select',
+              label: 'Heading format selector',
+              selectLabel: '',
+              options: HEADING_OPTIONS,
+              defaultValue: ''
+            }
+          ]
+        },
+        {
           id: 'font-family',
           items: [
             {
@@ -87,39 +100,30 @@ export const TOOLBAR_CONFIG: ToolbarConfig = {
           id: 'indent',
           items: [], // INDENT_BUTTONS
           separator: false
-        }
-      ]
-    },
-    {
-      id: 'row-2',
-      groups: [
+        },
         {
           id: 'lists',
           items: [] // LIST_BUTTONS
         },
         {
-          id: 'insert',
-          items: [], // INSERT_BUTTONS + TABLE_OPERATION_BUTTONS
-          separator: true
+          id: 'links',
+          items: [], // LINK_BUTTONS
+          separator: false
         },
         {
-          id: 'heading',
-          items: [
-            {
-              id: 'heading',
-              type: 'select',
-              label: 'Heading format selector',
-              selectLabel: '',
-              options: HEADING_OPTIONS,
-              defaultValue: ''
-            }
-          ]
+          id: 'media',
+          items: [], // MEDIA_BUTTONS
+          separator: true
         },
         {
           id: 'utility',
           items: [] // UTILITY_BUTTONS
         }
       ]
+    },
+    {
+      id: 'row-2',
+      groups: []
     }
   ]
 }

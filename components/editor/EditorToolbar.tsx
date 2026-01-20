@@ -73,6 +73,7 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
  * Assign icons to button configs
  */
 function assignIconsToConfigs(configs: any[]): any[] {
+  if (!configs) return []
   return configs.map(config => ({
     ...config,
     icon: ICON_MAP[config.id]
@@ -132,12 +133,13 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const alignmentButtons = assignIconsToConfigs(BUTTON_GROUPS.alignment)
   const indentButtons = assignIconsToConfigs(BUTTON_GROUPS.indent)
   const listButtons = assignIconsToConfigs(BUTTON_GROUPS.lists)
-  const insertButtons = assignIconsToConfigs(BUTTON_GROUPS.insert)
+  const linkButtons = assignIconsToConfigs(BUTTON_GROUPS.links)
+  const mediaButtons = assignIconsToConfigs(BUTTON_GROUPS.media)
 
   // Configs for selects
   const fontFamilyConfig = TOOLBAR_CONFIG.rows[0].groups.find(g => g.id === 'font-family')?.items[0]
   const fontSizeConfig = TOOLBAR_CONFIG.rows[0].groups.find(g => g.id === 'font-size')?.items[0]
-  const headingConfig = TOOLBAR_CONFIG.rows[1].groups.find(g => g.id === 'heading')?.items[0]
+  const headingConfig = TOOLBAR_CONFIG.rows[0].groups.find(g => g.id === 'heading')?.items[0]
 
   // Command handler
   const handleCommand = (command: string, arg?: string) => {
@@ -188,10 +190,6 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
           commands.formatBlock(value)
         } else if (value === 'p') {
           commands.formatBlock('p')
-        } else if (value === 'blockquote') {
-          commands.formatBlock('blockquote')
-        } else if (value === 'code') {
-          commands.formatBlock('pre')
         }
         break
     }
@@ -214,6 +212,19 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
         </ToolbarGroup>
         <ToolbarSeparator />
 
+        {/* Heading Format */}
+        <ToolbarGroup id="heading">
+          {headingConfig && (
+            <ButtonRenderer
+              key={headingConfig.id}
+              config={headingConfig}
+              disabled={disabled}
+              value={editorState.formatBlock}
+              onSelectChange={handleSelectChange}
+            />
+          )}
+        </ToolbarGroup>
+
         {/* Font Family */}
         <ToolbarGroup id="font-family">
           {fontFamilyConfig && (
@@ -226,8 +237,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             />
           )}
         </ToolbarGroup>
-        <ToolbarSeparator />
-
+        
         {/* Font Size */}
         <ToolbarGroup id="font-size">
           {fontSizeConfig && (
@@ -294,10 +304,8 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             />
           ))}
         </ToolbarGroup>
-      </ToolbarRow>
+        <ToolbarSeparator />
 
-      {/* Row 2: Lists, Insert, and Format */}
-      <ToolbarRow id="toolbar-row-2" showBorder={true}>
         {/* Lists */}
         <ToolbarGroup id="lists">
           {listButtons.map(config => (
@@ -312,9 +320,22 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
         </ToolbarGroup>
         <ToolbarSeparator />
 
-        {/* Insert */}
-        <ToolbarGroup id="insert">
-          {insertButtons.map(config => (
+        {/* Links */}
+        <ToolbarGroup id="links">
+          {linkButtons.map(config => (
+            <ButtonRenderer
+              key={config.id}
+              config={config}
+              disabled={disabled}
+              onCommand={handleCommand}
+            />
+          ))}
+        </ToolbarGroup>
+        <ToolbarSeparator />
+
+        {/* Media */}
+        <ToolbarGroup id="media">
+          {mediaButtons.map(config => (
             <ButtonRenderer
               key={config.id}
               config={config}
@@ -324,20 +345,6 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
               onTableSelect={handleTableSelect}
             />
           ))}
-        </ToolbarGroup>
-        <ToolbarSeparator />
-
-        {/* Heading Format */}
-        <ToolbarGroup id="heading">
-          {headingConfig && (
-            <ButtonRenderer
-              key={headingConfig.id}
-              config={headingConfig}
-              disabled={disabled}
-              value={editorState.formatBlock}
-              onSelectChange={handleSelectChange}
-            />
-          )}
         </ToolbarGroup>
       </ToolbarRow>
     </div>

@@ -111,12 +111,19 @@ export const LIST_BUTTONS: CommandButtonConfig[] = [
 ]
 
 // ============================================================================
-// Insert Buttons
+// Link Buttons
 // ============================================================================
 
-export const INSERT_BUTTONS: (CommandButtonConfig | PickerButtonConfig)[] = [
+export const LINK_BUTTONS: CommandButtonConfig[] = [
   { id: 'link', type: 'command', command: 'createLink', label: 'Insert link', shortcut: 'Ctrl+K' },
-  { id: 'unlink', type: 'command', command: 'unlink', label: 'Remove link', shortcut: 'Ctrl+Shift+K' },
+  { id: 'unlink', type: 'command', command: 'unlink', label: 'Remove link', shortcut: 'Ctrl+Shift+K' }
+]
+
+// ============================================================================
+// Media Buttons (Image, Table, HR)
+// ============================================================================
+
+export const MEDIA_BUTTONS: (CommandButtonConfig | PickerButtonConfig)[] = [
   { id: 'image', type: 'picker', picker: 'image', label: 'Insert image' },
   { id: 'table', type: 'picker', picker: 'table', label: 'Insert table' },
   { id: 'hr', type: 'command', command: 'insertHorizontalRule', label: 'Horizontal line' }
@@ -139,6 +146,7 @@ export const BUTTON_GROUPS = {
   alignment: ALIGNMENT_BUTTONS,
   indent: INDENT_BUTTONS,
   lists: LIST_BUTTONS,
-  insert: INSERT_BUTTONS,
+  links: LINK_BUTTONS,
+  media: MEDIA_BUTTONS,
   utility: UTILITY_BUTTONS
 } as const

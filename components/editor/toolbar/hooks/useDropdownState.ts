@@ -40,8 +40,34 @@ export function useDropdownState(options: UseDropdownStateOptions = {}) {
       }
     }
 
+    // Handle iframe clicks
+    const handleIframeClick = () => {
+      setIsOpen(false)
+    }
+
+    // Add listener to main document
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    
+    // Add listener to all iframes
+    const iframes = document.querySelectorAll('iframe')
+    iframes.forEach(iframe => {
+      try {
+        iframe.contentWindow?.document.addEventListener('mousedown', handleIframeClick)
+      } catch (e) {
+        // Ignore cross-origin issues
+      }
+    })
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      iframes.forEach(iframe => {
+        try {
+          iframe.contentWindow?.document.removeEventListener('mousedown', handleIframeClick)
+        } catch (e) {
+          // Ignore
+        }
+      })
+    }
   }, [isOpen, containerRef])
 
   // Close on escape key

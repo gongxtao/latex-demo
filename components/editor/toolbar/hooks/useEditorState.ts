@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
+import { FONT_FAMILIES } from '../config/constants'
 
 /**
  * Interface representing the current state of the editor
@@ -128,7 +129,17 @@ export const useEditorState = ({ iframeRef }: UseEditorStateProps) => {
     else if (queryState('justifyFull')) align = 'justify'
 
     const rawFontName = getComputedStyleValue('fontFamily') || queryValue('fontName') || 'Arial'
-    const normalizedFontName = rawFontName.replace(/['"]/g, '').split(',')[0]?.trim() || 'Arial'
+    
+    // Normalize font name: remove quotes and take first font in stack
+    const cleanFontName = rawFontName.replace(/['"]/g, '').split(',')[0]?.trim() || 'Arial'
+    
+    // Try to match with known font families (case-insensitive)
+    const matchedFont = FONT_FAMILIES.find((font: { value: string, label: string }) => 
+      font.value.toLowerCase() === cleanFontName.toLowerCase() ||
+      font.label.toLowerCase() === cleanFontName.toLowerCase()
+    )
+    
+    const normalizedFontName = matchedFont ? matchedFont.value : cleanFontName
 
     setEditorState({
       isBold: queryState('bold'),

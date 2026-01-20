@@ -66,16 +66,13 @@ export const FONT_SIZES = [
 
 // Heading format options
 export const HEADING_OPTIONS = [
-  { value: '', label: 'Normal text' },
+  { value: 'p', label: 'Normal Text' },
   { value: 'h1', label: 'Heading 1' },
   { value: 'h2', label: 'Heading 2' },
   { value: 'h3', label: 'Heading 3' },
   { value: 'h4', label: 'Heading 4' },
   { value: 'h5', label: 'Heading 5' },
-  { value: 'h6', label: 'Heading 6' },
-  { value: 'p', label: 'Paragraph' },
-  { value: 'blockquote', label: 'Blockquote' },
-  { value: 'code', label: 'Code block' }
+  { value: 'h6', label: 'Heading 6' }
 ]
 
 // Table grid size

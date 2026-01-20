@@ -45,7 +45,7 @@ const ToolbarDropdown: React.FC<ToolbarDropdownProps> = ({
     }
   }, [value])
 
-  const selectedOption = options.find(opt => opt.value === value)
+  const selectedOption = options.find(opt => opt.value === (inputValue || value))
   const displayLabel = selectedOption ? selectedOption.label : (label || placeholder)
 
   const handleSelect = (optionValue: string) => {
