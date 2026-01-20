@@ -253,6 +253,7 @@ export class TableHandler {
       cell.style.padding = '8px'
       cell.style.minWidth = `${MIN_CELL_WIDTH}px`
       cell.style.height = `${MIN_CELL_HEIGHT}px`
+      cell.style.boxSizing = 'border-box'
       cell.style.whiteSpace = 'normal'
       cell.style.wordBreak = 'break-word'
       cell.style.overflowWrap = 'break-word'
@@ -277,12 +278,95 @@ export class TableHandler {
       if (!cell) continue
       if (processedCells.has(cell)) continue
       processedCells.add(cell)
+      cell.style.boxSizing = 'border-box'
       cell.style.width = `${nextWidth}px`
       cell.style.minWidth = `${nextWidth}px`
       cell.style.whiteSpace = 'normal'
       cell.style.wordBreak = 'break-word'
       cell.style.overflowWrap = 'break-word'
     }
+  }
+
+  applyColumnWidths(widths: number[]) {
+    const normalized = []
+    for (let i = 0; i < this.maxCols; i++) {
+      const next = widths[i]
+      normalized[i] = Math.max(typeof next === 'number' ? next : MIN_CELL_WIDTH, MIN_CELL_WIDTH)
+    }
+    const processedCells = new Set<HTMLTableCellElement>()
+    for (let r = 0; r < this.rows.length; r++) {
+      for (let c = 0; c < this.maxCols; c++) {
+        const cell = this.grid[r][c]
+        if (!cell) continue
+        if (processedCells.has(cell)) continue
+        processedCells.add(cell)
+        const startCol = this.grid[r].indexOf(cell)
+        if (startCol === -1) continue
+        const span = cell.colSpan || 1
+        let totalWidth = 0
+        for (let i = 0; i < span; i++) {
+          totalWidth += normalized[startCol + i] ?? MIN_CELL_WIDTH
+        }
+        cell.style.boxSizing = 'border-box'
+        cell.style.width = `${totalWidth}px`
+        cell.style.minWidth = `${totalWidth}px`
+        cell.style.whiteSpace = 'normal'
+        cell.style.wordBreak = 'break-word'
+        cell.style.overflowWrap = 'break-word'
+      }
+    }
+  }
+
+  getCellBounds(cell: HTMLTableCellElement) {
+    let startRow = Infinity
+    let endRow = -1
+    let startCol = Infinity
+    let endCol = -1
+
+    for (let r = 0; r < this.rows.length; r++) {
+      for (let c = 0; c < this.maxCols; c++) {
+        if (this.grid[r][c] === cell) {
+          startRow = Math.min(startRow, r)
+          endRow = Math.max(endRow, r)
+          startCol = Math.min(startCol, c)
+          endCol = Math.max(endCol, c)
+        }
+      }
+    }
+
+    if (startRow === Infinity) return null
+    return { startRow, endRow, startCol, endCol }
+  }
+
+  getColumnMetrics() {
+    const tableRect = this.table.getBoundingClientRect()
+    const fallbackWidth = this.maxCols > 0 ? tableRect.width / this.maxCols : 0
+    const cols: { left: number; width: number }[] = []
+
+    for (let c = 0; c < this.maxCols; c++) {
+      let metric: { left: number; width: number } | null = null
+      for (let r = 0; r < this.rows.length; r++) {
+        const cell = this.grid[r][c]
+        if (!cell) continue
+        const rect = cell.getBoundingClientRect()
+        const startIndex = this.grid[r].indexOf(cell)
+        if (startIndex === -1) continue
+        const span = cell.colSpan || 1
+        const width = rect.width / span
+        const left = rect.left + (c - startIndex) * width
+        metric = { left, width }
+        break
+      }
+      if (!metric) {
+        metric = {
+          left: tableRect.left + c * fallbackWidth,
+          width: fallbackWidth
+        }
+      }
+      cols.push(metric)
+    }
+
+    return cols
   }
 
   insertColumnEnd() {
@@ -517,7 +601,20 @@ export class TableHandler {
     const keeper = this.grid[minRow][minCol]
     if (!keeper) return
 
-    // Remove others
+    const cellPositionMap = new Map<HTMLTableCellElement, { r: number; c: number }>()
+    cellPositions.forEach(pos => {
+      if (!cellPositionMap.has(pos.cell)) {
+        cellPositionMap.set(pos.cell, { r: pos.r, c: pos.c })
+      }
+    })
+    const orderedCells = Array.from(cellPositionMap.entries())
+      .map(([cell, pos]) => ({ cell, r: pos.r, c: pos.c }))
+      .sort((a, b) => (a.r - b.r) || (a.c - b.c))
+    const mergedPieces = orderedCells
+      .map(item => item.cell.innerHTML.trim())
+      .filter(html => html.length > 0)
+    const mergedHtml = mergedPieces.join('<br>')
+
     const cellsToRemove = new Set<HTMLTableCellElement>()
     for (const cell of cells) {
       if (cell !== keeper) {
@@ -530,6 +627,7 @@ export class TableHandler {
     // Update keeper
     keeper.rowSpan = targetRowCount
     keeper.colSpan = targetColCount
+    keeper.innerHTML = mergedHtml
     
     // Re-analyze to update grid
     this.analyze()

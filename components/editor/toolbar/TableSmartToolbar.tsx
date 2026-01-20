@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import SmartContextMenu from './SmartContextMenu'
 import { TableHandler } from '../utils/table'
 
@@ -61,18 +62,10 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
       })
     })
 
-    if (activeTable.rows.length > 0) {
-        const firstRow = activeTable.rows[0]
-        // Assuming first row cells represent columns. 
-        // Note: this is a simplification. For exact grid, we need TableHandler logic.
-        Array.from(firstRow.cells).forEach(cell => {
-            const rect = cell.getBoundingClientRect()
-            cols.push({
-                width: rect.width,
-                left: rect.left
-            })
-        })
-    }
+    const handler = new TableHandler(activeTable)
+    handler.getColumnMetrics().forEach(col => {
+      cols.push(col)
+    })
 
     setMetrics({
       rows,
@@ -184,6 +177,12 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
       const iframe = iframeRef.current
       const doc = iframe?.contentDocument
       if (!doc || readonly || !metrics || !activeTable) return
+      const clearDocSelection = () => {
+        const selection = doc.getSelection()
+        if (selection && selection.rangeCount > 0) {
+          selection.removeAllRanges()
+        }
+      }
 
       const onMouseDown = (e: MouseEvent) => {
           setContextMenu(null) // Close menu on any interaction
@@ -225,8 +224,6 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
           const table = target.closest('table')
           if (table !== activeTable) return
 
-          // We can use TableHandler or just DOM
-          // Simple DOM lookup
           const tr = cell.closest('tr') as HTMLTableRowElement
           if (!tr) return
           // const r = tr.rowIndex // This might be absolute index in table
@@ -242,27 +239,19 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
           // e.clientX in iframe is relative to viewport. metrics.top is relative to viewport.
           // So the coordinate check is correct.
           
-          let gridR = -1
-          for (let i = 0; i < metrics.rows.length; i++) {
-             const row = metrics.rows[i]
-             if (clientY >= row.top && clientY <= row.top + row.height) {
-                 gridR = i
-                 break
-             }
-          }
-          
-          let gridC = -1
-          for (let i = 0; i < metrics.cols.length; i++) {
-             const col = metrics.cols[i]
-             if (clientX >= col.left && clientX <= col.left + col.width) {
-                 gridC = i
-                 break
-             }
-          }
-          
-          if (gridR !== -1 && gridC !== -1) {
-              setIsSelecting(true)
-              setSelection({ startRow: gridR, startCol: gridC, endRow: gridR, endCol: gridC })
+          const handler = new TableHandler(activeTable)
+          const bounds = handler.getCellBounds(cell as HTMLTableCellElement)
+          if (bounds) {
+            clearDocSelection()
+            e.preventDefault()
+            setIsSelecting(true)
+            setSelection({
+              startRow: bounds.startRow,
+              startCol: bounds.startCol,
+              endRow: bounds.endRow,
+              endCol: bounds.endCol
+            })
+            return
           }
       }
       
@@ -279,7 +268,8 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
           }
 
           if (isSelecting) {
-            e.preventDefault() 
+            e.preventDefault()
+            clearDocSelection()
             let clientX = e.clientX
             let clientY = e.clientY
             let gridR = -1
@@ -301,7 +291,17 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
             }
             
             if (gridR !== -1 && gridC !== -1) {
-                setSelection(prev => prev ? { ...prev, endRow: gridR, endCol: gridC } : null)
+                const handler = new TableHandler(activeTable)
+                const cellAt = handler.getCellAt(gridR, gridC)
+                if (!cellAt) return
+                const bounds = handler.getCellBounds(cellAt)
+                if (!bounds) return
+                setSelection(prev => {
+                  if (!prev) return null
+                  const endRow = gridR < prev.startRow ? bounds.startRow : bounds.endRow
+                  const endCol = gridC < prev.startCol ? bounds.startCol : bounds.endCol
+                  return { ...prev, endRow, endCol }
+                })
             }
             return
           }
@@ -341,7 +341,6 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
           
           e.preventDefault()
           
-          // Get grid coords
           let gridR = -1
           let gridC = -1
           
@@ -349,19 +348,26 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
           let clientX = e.clientX
           let clientY = e.clientY
           
-          for (let i = 0; i < metrics.rows.length; i++) {
-             const row = metrics.rows[i]
-             if (clientY >= row.top && clientY <= row.top + row.height) {
-                 gridR = i
-                 break
-             }
-          }
-          for (let i = 0; i < metrics.cols.length; i++) {
-             const col = metrics.cols[i]
-             if (clientX >= col.left && clientX <= col.left + col.width) {
-                 gridC = i
-                 break
-             }
+          const handler = new TableHandler(activeTable)
+          const bounds = handler.getCellBounds(cell as HTMLTableCellElement)
+          if (bounds) {
+            gridR = bounds.startRow
+            gridC = bounds.startCol
+          } else {
+            for (let i = 0; i < metrics.rows.length; i++) {
+               const row = metrics.rows[i]
+               if (clientY >= row.top && clientY <= row.top + row.height) {
+                   gridR = i
+                   break
+               }
+            }
+            for (let i = 0; i < metrics.cols.length; i++) {
+               const col = metrics.cols[i]
+               if (clientX >= col.left && clientX <= col.left + col.width) {
+                   gridC = i
+                   break
+               }
+            }
           }
           
           // Update selection if needed
@@ -375,7 +381,16 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
           }
 
           if (!isInside && gridR !== -1 && gridC !== -1) {
-              setSelection({ startRow: gridR, startCol: gridC, endRow: gridR, endCol: gridC })
+              if (bounds) {
+                setSelection({
+                  startRow: bounds.startRow,
+                  startCol: bounds.startCol,
+                  endRow: bounds.endRow,
+                  endCol: bounds.endCol
+                })
+              } else {
+                setSelection({ startRow: gridR, startCol: gridC, endRow: gridR, endCol: gridC })
+              }
           }
           
           // Show menu
@@ -424,12 +439,85 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
   const BAR_SIZE = 24
   const GAP = 2
 
-  const selectionBounds = selection ? {
-    startRow: Math.min(selection.startRow, selection.endRow),
-    endRow: Math.max(selection.startRow, selection.endRow),
-    startCol: Math.min(selection.startCol, selection.endCol),
-    endCol: Math.max(selection.startCol, selection.endCol)
-  } : null
+  let canMerge = false
+  let canSplit = false
+  if (selection && activeTable) {
+    const handler = new TableHandler(activeTable)
+    const selectionBounds = {
+      startRow: Math.min(selection.startRow, selection.endRow),
+      endRow: Math.max(selection.startRow, selection.endRow),
+      startCol: Math.min(selection.startCol, selection.endCol),
+      endCol: Math.max(selection.startCol, selection.endCol)
+    }
+    const uniqueCells = new Set<HTMLTableCellElement>()
+    for (let r = selectionBounds.startRow; r <= selectionBounds.endRow; r++) {
+      for (let c = selectionBounds.startCol; c <= selectionBounds.endCol; c++) {
+        const cell = handler.getCellAt(r, c)
+        if (cell) uniqueCells.add(cell)
+      }
+    }
+    const cells = Array.from(uniqueCells)
+    const hasUnmerged = cells.some(cell => (cell.rowSpan || 1) === 1 && (cell.colSpan || 1) === 1)
+    const hasMerged = cells.some(cell => (cell.rowSpan || 1) > 1 || (cell.colSpan || 1) > 1)
+    const multiple = cells.length > 1
+    const single = cells.length === 1
+    canMerge = multiple && hasUnmerged
+    canSplit = (single && hasMerged && !hasUnmerged) || (multiple && !hasUnmerged && hasMerged)
+  }
+
+  const getCellCoords = (x: number, y: number) => {
+      if (!iframeRef.current) return { r: -1, c: -1 }
+      const iframeRect = iframeRef.current.getBoundingClientRect()
+      
+      const mx = x - iframeRect.left
+      const my = y - iframeRect.top
+      
+      let r = -1
+      for (let i = 0; i < metrics.rows.length; i++) {
+          const row = metrics.rows[i]
+          if (my >= row.top && my <= row.top + row.height) {
+              r = i
+              break
+          }
+      }
+      
+      let c = -1
+      for (let i = 0; i < metrics.cols.length; i++) {
+          const col = metrics.cols[i]
+          if (mx >= col.left && mx <= col.left + col.width) {
+              c = i
+              break
+          }
+      }
+      
+      return { r, c }
+  }
+
+  const getSelectionStyle = () => {
+      if (!selection) return { display: 'none' }
+      
+      const r1 = Math.min(selection.startRow, selection.endRow)
+      const r2 = Math.max(selection.startRow, selection.endRow)
+      const c1 = Math.min(selection.startCol, selection.endCol)
+      const c2 = Math.max(selection.startCol, selection.endCol)
+      
+      if (r1 >= metrics.rows.length || c1 >= metrics.cols.length) return { display: 'none' }
+      
+      const top = metrics.rows[r1].top
+      const height = (metrics.rows[r2].top + metrics.rows[r2].height) - top
+      const left = metrics.cols[c1].left
+      const width = (metrics.cols[c2].left + metrics.cols[c2].width) - left
+      
+      return {
+          top, left, width, height,
+          display: 'block',
+          position: 'absolute' as const,
+          backgroundColor: 'rgba(59, 130, 246, 0.2)',
+          border: '2px solid #3b82f6',
+          pointerEvents: 'none' as const,
+          zIndex: 5
+      }
+  }
 
   const getResizeLineStyle = () => {
       if (!resizeHint) return { display: 'none' }
@@ -464,6 +552,7 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
       {/* Interaction Layer over table - REMOVED blocking div */}
       
       <div style={getResizeLineStyle()} />
+      <div style={getSelectionStyle()} />
 
       {/* Column Indicators */}
       <div className="absolute pointer-events-auto flex" style={{
@@ -477,7 +566,6 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
             className={`
               group relative border border-gray-300 bg-gray-50 hover:bg-blue-50 cursor-pointer flex items-center justify-center text-xs text-gray-500
               ${hoveredCol === index ? 'bg-blue-100 border-blue-300' : ''}
-              ${selectionBounds && index >= selectionBounds.startCol && index <= selectionBounds.endCol ? 'bg-blue-200 border-blue-400 text-blue-700' : ''}
             `}
             style={{ width: col.width, height: BAR_SIZE }}
             onMouseEnter={() => setHoveredCol(index)}
@@ -490,7 +578,7 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
                 setSelection({ startRow: 0, endRow: metrics.rows.length - 1, startCol: index, endCol: index })
             }}
           >
-            <div className="w-1 h-3 bg-gray-300 rounded-sm" />
+            {/* <div className="w-1 h-3 bg-gray-300 rounded-sm" /> */}
             <div 
                 className="absolute right-0 top-0 bottom-0 w-4 translate-x-1/2 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer z-20"
                 onClick={(e) => {
@@ -518,7 +606,6 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
             className={`
               group relative border border-gray-300 bg-gray-50 hover:bg-blue-50 cursor-pointer flex items-center justify-center text-xs text-gray-500
               ${hoveredRow === index ? 'bg-blue-100 border-blue-300' : ''}
-              ${selectionBounds && index >= selectionBounds.startRow && index <= selectionBounds.endRow ? 'bg-blue-200 border-blue-400 text-blue-700' : ''}
             `}
             style={{ height: row.height, width: BAR_SIZE }}
             onMouseEnter={() => setHoveredRow(index)}
@@ -531,7 +618,7 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
                 setSelection({ startRow: index, endRow: index, startCol: 0, endCol: metrics.cols.length - 1 })
             }}
           >
-             <div className="w-3 h-1 bg-gray-300 rounded-sm" />
+             {/* <div className="w-3 h-1 bg-gray-300 rounded-sm" /> */}
             <div 
                 className="absolute bottom-0 left-0 right-0 h-4 translate-y-1/2 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer z-20"
                 onClick={(e) => {
@@ -589,8 +676,8 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
                   } : undefined
               })
           }}
-          canMerge={selection ? (selection.startRow !== selection.endRow || selection.startCol !== selection.endCol) : false}
-          canSplit={true} // Simplified check
+          canMerge={canMerge}
+          canSplit={canSplit}
         />
       )}
     </div>

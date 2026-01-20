@@ -116,38 +116,33 @@ const SmartContextMenu: React.FC<SmartContextMenuProps> = ({
       style={{ top: position.y, left: position.x }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <MenuItem label="复制" onClick={() => handleAction('copy')} />
-      <MenuItem label="粘贴" onClick={() => handleAction('paste')} />
-      
-      <Separator />
-      
-      <SubMenu id="align" title="垂直对齐" icon={<AlignIcon />}>
-          <MenuItem label="顶端对齐" icon={<span className="w-4 mr-2 text-center">↑</span>} onClick={() => handleAction('valignTop')} />
-          <MenuItem label="垂直居中" icon={<span className="w-4 mr-2 text-center">↕</span>} onClick={() => handleAction('valignMiddle')} />
-          <MenuItem label="底端对齐" icon={<span className="w-4 mr-2 text-center">↓</span>} onClick={() => handleAction('valignBottom')} />
+      <SubMenu id="align" title="Vertical Align" icon={<AlignIcon />}>
+          <MenuItem label="Align Top" icon={<span className="w-4 mr-2 text-center">↑</span>} onClick={() => handleAction('valignTop')} />
+          <MenuItem label="Align Middle" icon={<span className="w-4 mr-2 text-center">↕</span>} onClick={() => handleAction('valignMiddle')} />
+          <MenuItem label="Align Bottom" icon={<span className="w-4 mr-2 text-center">↓</span>} onClick={() => handleAction('valignBottom')} />
       </SubMenu>
 
-      <SubMenu id="insert" title="插入行列" icon={<InsertIcon />}>
-          <MenuItem label="上方插入1行" icon={<span className="w-4 mr-2 text-center">↟</span>} onClick={() => handleAction('insertRowBefore')} />
-          <MenuItem label="下方插入1行" icon={<span className="w-4 mr-2 text-center">↡</span>} onClick={() => handleAction('insertRowAfter')} />
-          <MenuItem label="左侧插入1列" icon={<span className="w-4 mr-2 text-center">↞</span>} onClick={() => handleAction('insertColumnBefore')} />
-          <MenuItem label="右侧插入1列" icon={<span className="w-4 mr-2 text-center">↠</span>} onClick={() => handleAction('insertColumnAfter')} />
+      <SubMenu id="insert" title="Insert" icon={<InsertIcon />}>
+          <MenuItem label="Insert Row Above" icon={<span className="w-4 mr-2 text-center">↟</span>} onClick={() => handleAction('insertRowBefore')} />
+          <MenuItem label="Insert Row Below" icon={<span className="w-4 mr-2 text-center">↡</span>} onClick={() => handleAction('insertRowAfter')} />
+          <MenuItem label="Insert Column Left" icon={<span className="w-4 mr-2 text-center">↞</span>} onClick={() => handleAction('insertColumnBefore')} />
+          <MenuItem label="Insert Column Right" icon={<span className="w-4 mr-2 text-center">↠</span>} onClick={() => handleAction('insertColumnAfter')} />
       </SubMenu>
 
-      <SubMenu id="delete" title="删除行列" icon={<DeleteIcon />}>
-          <MenuItem label="删除1行" className="text-red-600" onClick={() => handleAction('deleteRow')} />
-          <MenuItem label="删除1列" className="text-red-600" onClick={() => handleAction('deleteColumn')} />
-          <MenuItem label="删除整个表格" className="text-red-600" onClick={() => handleAction('deleteTable')} />
+      <SubMenu id="delete" title="Delete" icon={<DeleteIcon />}>
+          <MenuItem label="Delete Row" className="text-red-600" onClick={() => handleAction('deleteRow')} />
+          <MenuItem label="Delete Column" className="text-red-600" onClick={() => handleAction('deleteColumn')} />
+          <MenuItem label="Delete Table" className="text-red-600" onClick={() => handleAction('deleteTable')} />
       </SubMenu>
 
       {(canMerge || canSplit) && <Separator />}
       
       {canMerge && (
-        <MenuItem label="合并单元格" icon={<MergeIcon />} onClick={() => handleAction('mergeCells')} />
+        <MenuItem label="Merge Cells" icon={<MergeIcon />} onClick={() => handleAction('mergeCells')} />
       )}
       
       {canSplit && (
-        <MenuItem label="取消合并" icon={<MergeIcon />} onClick={() => handleAction('splitCell')} />
+        <MenuItem label="Split Cell" icon={<MergeIcon />} onClick={() => handleAction('splitCell')} />
       )}
 
     </div>

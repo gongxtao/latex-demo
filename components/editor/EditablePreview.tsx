@@ -563,6 +563,18 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     if (!activeTable) return
     const handler = new TableHandler(activeTable)
     const index = payload?.index
+    const preserveSizes = () => {
+      const rowHeights = Array.from(activeTable.rows).map(row => row.getBoundingClientRect().height)
+      const colWidths = handler.getColumnMetrics().map(col => col.width)
+      return { rowHeights, colWidths }
+    }
+    const restoreSizes = (sizes: { rowHeights: number[]; colWidths: number[] }) => {
+      const nextHandler = new TableHandler(activeTable)
+      sizes.rowHeights.forEach((height, rowIndex) => {
+        nextHandler.setRowHeight(rowIndex, height)
+      })
+      nextHandler.applyColumnWidths(sizes.colWidths)
+    }
 
     switch (action) {
       case 'insertRowBefore':
@@ -598,6 +610,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
         break
       case 'mergeCells':
         if (payload?.bounds) {
+             const sizes = preserveSizes()
              const { startRow, endRow, startCol, endCol } = payload.bounds
              const cells: HTMLTableCellElement[] = []
              for (let r = startRow; r <= endRow; r++) {
@@ -608,13 +621,20 @@ export default function EditablePreview({ selectedFile, content, onContentChange
                      }
                  }
              }
-             if (cells.length > 1) handler.mergeCells(cells)
+             if (cells.length > 1) {
+               handler.mergeCells(cells)
+               restoreSizes(sizes)
+             }
         }
         break
       case 'splitCell':
         if (payload?.bounds) {
+             const sizes = preserveSizes()
              const cell = handler.getCellAt(payload.bounds.startRow, payload.bounds.startCol)
-             if (cell) handler.splitCell(cell)
+             if (cell) {
+               handler.splitCell(cell)
+               restoreSizes(sizes)
+             }
         }
         break
       case 'valignTop':
@@ -641,7 +661,12 @@ export default function EditablePreview({ selectedFile, content, onContentChange
         break
       case 'resizeColumn':
         if (index !== undefined && typeof payload?.size === 'number') {
-             handler.setColumnWidth(index, payload.size)
+             const currentWidths = handler.getColumnMetrics().map(col => col.width)
+             currentWidths[index] = payload.size
+             handler.applyColumnWidths(currentWidths)
+             const totalWidth = currentWidths.reduce((sum, width) => sum + width, 0)
+             activeTable.style.width = `${totalWidth}px`
+             activeTable.style.tableLayout = 'fixed'
         }
         break
     }
@@ -766,4 +791,3 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     </div>
   )
 }
-
