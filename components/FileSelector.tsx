@@ -16,18 +16,31 @@ interface FileSelectorProps {
 export default function FileSelector({ onFileSelect, selectedFile }: FileSelectorProps) {
   const [categories, setCategories] = useState<FileCategory[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     // Fetch all HTML file categories
     fetch('/api/files')
-      .then(res => res.json())
+      .then(async res => {
+        if (!res.ok) {
+           const text = await res.text()
+           throw new Error(`Server returned ${res.status}: ${text.slice(0, 100)}`)
+        }
+        return res.json()
+      })
       .then(data => {
+        if (!data || !Array.isArray(data.categories)) {
+            console.error('Invalid data format:', data)
+            throw new Error('Invalid data format received from server')
+        }
         setCategories(data.categories)
-        setLoading(false)
       })
       .catch(error => {
         console.error('Failed to fetch file list:', error)
+        setError(error.message)
+      })
+      .finally(() => {
         setLoading(false)
       })
   }, [])
@@ -72,7 +85,9 @@ export default function FileSelector({ onFileSelect, selectedFile }: FileSelecto
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {loading ? (
-            <div className="text-gray-500">Loading...</div>
+            <div className="text-gray-500">Loading files...</div>
+          ) : error ? (
+            <div className="text-red-500">Error: {error}</div>
           ) : (
             categories.map((category) => (
               <div key={category.category} className="flex flex-col space-y-2">

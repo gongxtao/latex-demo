@@ -434,4 +434,135 @@ export class TableHandler {
     
     row.remove()
   }
+
+  mergeCells(cells: HTMLTableCellElement[]) {
+    if (cells.length < 2) return
+
+    // 1. Calculate bounding box
+    let minRow = Infinity, maxRow = -Infinity
+    let minCol = Infinity, maxCol = -Infinity
+
+    const cellPositions: { cell: HTMLTableCellElement, r: number, c: number }[] = []
+
+    for (const cell of cells) {
+      // Find cell position in grid
+      for (let r = 0; r < this.rows.length; r++) {
+        for (let c = 0; c < this.maxCols; c++) {
+          if (this.grid[r][c] === cell) {
+            minRow = Math.min(minRow, r)
+            maxRow = Math.max(maxRow, r)
+            minCol = Math.min(minCol, c)
+            maxCol = Math.max(maxCol, c)
+            cellPositions.push({ cell, r, c })
+          }
+        }
+      }
+    }
+
+    if (minRow === Infinity) return // Should not happen
+
+    // 2. Verify rectangularity
+    // The number of cells in the grid within bounds must equal the number of cells provided
+    // AND the area (width * height) must match the number of grid slots covered
+    
+    const targetRowCount = maxRow - minRow + 1
+    const targetColCount = maxCol - minCol + 1
+    const targetArea = targetRowCount * targetColCount
+
+    // Check if every slot in the bounding box is covered by one of the input cells
+    for (let r = minRow; r <= maxRow; r++) {
+      for (let c = minCol; c <= maxCol; c++) {
+        const cellAtPos = this.grid[r][c]
+        if (!cellAtPos || !cells.includes(cellAtPos)) {
+          return // Selection is not rectangular or contains gaps
+        }
+      }
+    }
+
+    // 3. Merge
+    // The top-left cell is the keeper
+    const keeper = this.grid[minRow][minCol]
+    if (!keeper) return
+
+    // Remove others
+    const cellsToRemove = new Set<HTMLTableCellElement>()
+    for (const cell of cells) {
+      if (cell !== keeper) {
+        cellsToRemove.add(cell)
+      }
+    }
+    
+    cellsToRemove.forEach(cell => cell.remove())
+
+    // Update keeper
+    keeper.rowSpan = targetRowCount
+    keeper.colSpan = targetColCount
+    
+    // Re-analyze to update grid
+    this.analyze()
+  }
+
+  splitCell(cell: HTMLTableCellElement) {
+    const rowspan = cell.rowSpan || 1
+    const colspan = cell.colSpan || 1
+
+    if (rowspan === 1 && colspan === 1) return
+
+    // Find position
+    let startR = -1, startC = -1
+    for (let r = 0; r < this.rows.length; r++) {
+      const c = this.grid[r].indexOf(cell)
+      if (c !== -1) {
+        startR = r
+        startC = c
+        break
+      }
+    }
+
+    if (startR === -1) return
+
+    // Reset current cell
+    cell.rowSpan = 1
+    cell.colSpan = 1
+
+    // Insert new cells for the gaps
+    for (let r = startR; r < startR + rowspan; r++) {
+      for (let c = startC; c < startC + colspan; c++) {
+        if (r === startR && c === startC) continue // This is the original cell
+
+        const row = this.rows[r]
+        
+        // We need to insert a cell at column c in row r
+        // Find the insertion point: the cell at grid[r][c+1]...
+        let nextCell: HTMLTableCellElement | null = null
+        for (let nextC = c + 1; nextC < this.maxCols; nextC++) {
+            const possibleNext = this.grid[r][nextC]
+            if (possibleNext && possibleNext.parentElement === row) {
+                // Make sure we haven't already seen this cell in our loop (unlikely for right-side neighbors)
+                // And ensure it starts in this row (not a rowspan from above)
+                nextCell = possibleNext
+                break
+            }
+        }
+
+        const newCell = this.table.ownerDocument.createElement('td')
+        this.styleCell(newCell)
+
+        if (nextCell) {
+          row.insertBefore(newCell, nextCell)
+        } else {
+          row.appendChild(newCell)
+        }
+      }
+    }
+    
+    this.analyze()
+  }
+
+  getCellAt(row: number, col: number): HTMLTableCellElement | null {
+    if (row >= 0 && row < this.rows.length && col >= 0 && col < this.maxCols) {
+      return this.grid[row][col]
+    }
+    return null
+  }
 }

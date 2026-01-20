@@ -6,7 +6,8 @@ import debounce from 'lodash/debounce'
 import EditorToolbar from './EditorToolbar'
 import useHistory from './hooks/useHistory'
 import ImageResizer from './ImageResizer'
-import TableContextMenu from './TableContextMenu'
+import TableSmartToolbar from './toolbar/TableSmartToolbar'
+
 import { TableHandler } from './utils/table'
 
 interface EditablePreviewProps {
@@ -28,11 +29,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
   const lastSyncedContentRef = useRef(content)
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null)
   const [iframeBody, setIframeBody] = useState<HTMLElement | null>(null)
-  const [contextMenu, setContextMenu] = useState<{
-    target: HTMLTableElement,
-    cell: HTMLTableCellElement,
-    position: { x: number, y: number }
-  } | null>(null)
+  const [activeTable, setActiveTable] = useState<HTMLTableElement | null>(null)
   
   // History management
   const { push: pushHistory, undo, redo, canUndo, canRedo } = useHistory(content)
@@ -248,65 +245,81 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       // If not in edit mode, prevent selection and interaction
       if (!isEditing) {
         setSelectedImage(null)
-        setContextMenu(null)
+        setActiveTable(null)
         return
       }
 
-      const target = e.target as HTMLElement
+      let target = e.target as HTMLElement
+      // Handle text nodes (nodeType 3)
+      if (target.nodeType === 3 && target.parentElement) {
+        target = target.parentElement
+      }
       
       // Select image
       if (target.tagName === 'IMG') {
         setSelectedImage(target as HTMLImageElement)
         return
       }
+
+      // Detect table
+      // Prioritize clicking inside a table cell to activate it
+      const table = target.closest('table')
+      if (table) {
+          // If we are clicking a different table or no table was active, set it
+          if (activeTable !== table) {
+              setActiveTable(table as HTMLTableElement)
+          }
+      } else {
+          // Only deselect if we are NOT clicking on the SmartToolbar
+          // The SmartToolbar is outside the iframe, so clicks there won't trigger this iframe click listener.
+          // BUT, we might be clicking empty space in iframe.
+          setActiveTable(null)
+      }
+    }
+    
+    // Handle context menu to activate table
+    const handleContextMenu = (e: MouseEvent) => {
+        if (!isEditing) return
+        let target = e.target as HTMLElement
+        if (target.nodeType === 3 && target.parentElement) {
+          target = target.parentElement
+        }
+
+        const table = target.closest('table')
+        if (table) {
+            setActiveTable(table as HTMLTableElement)
+        }
     }
     
     // Handle global mousedown for deselection (more reliable than click)
     const handleGlobalMouseDown = (e: MouseEvent) => {
       if (!isEditing) return
       
-      const target = e.target as HTMLElement
+      let target = e.target as HTMLElement
+      // Handle text nodes
+      if (target.nodeType === 3 && target.parentElement) {
+        target = target.parentElement
+      }
       
       // Don't deselect if clicking on image or resizer handle
       if (target.tagName === 'IMG' || target.classList.contains('resizer-handle')) {
         return
       }
       
-      // Close context menu
-      setContextMenu(null)
+      // If clicking inside a table, activate it immediately
+      const table = target.closest('table')
+      if (table) {
+          if (activeTable !== table) {
+              setActiveTable(table as HTMLTableElement)
+          }
+          return
+      }
 
-      // Deselect image
+      // Deselect image and table if clicking elsewhere
       setSelectedImage(null)
+      setActiveTable(null)
     }
     
-    // Context menu handler
-    const handleContextMenu = (e: MouseEvent) => {
-      if (!isEditing) return
-      
-      const target = e.target as HTMLElement
-      // Find closest TD/TH
-      const cell = target.closest('td, th') as HTMLTableCellElement
-      if (!cell) return
-      
-      const table = cell.closest('table') as HTMLTableElement
-      if (!table) return
-      
-      e.preventDefault()
-      
-      // Calculate position relative to viewport
-      // We need to account for iframe position
-      const iframeRect = iframe.getBoundingClientRect()
-      
-      setContextMenu({
-        target: table,
-        cell: cell,
-        position: {
-          x: iframeRect.left + e.clientX,
-          y: iframeRect.top + e.clientY
-        }
-      })
-    }
-
     // Handle mouseup as fallback for click (sometimes click is swallowed during editing)
     const handleMouseUp = (e: MouseEvent) => {
        if (!isEditing) return
@@ -332,19 +345,28 @@ export default function EditablePreview({ selectedFile, content, onContentChange
         if (!isEditing) return
         
         const selection = iframeDoc.getSelection()
-        if (selection && !selection.isCollapsed) {
-           // If user selects text, clear image selection
-           // But wait a tick to ensure it wasn't just a click on the image itself
-           setTimeout(() => {
-             const newSelection = iframeDoc.getSelection()
-             // If selection is now a range (text selected), or caret is not in an image context
-             // Note: This is a bit heuristic. The reliable way is mousedown.
-             // We mainly use this to clear when typing or arrow keys move cursor.
-             if (newSelection && newSelection.rangeCount > 0) {
-               // Check if the selection is actually the image we selected
-               // Browsers handle image selection differently.
-               // For now, let's rely mostly on mousedown/keydown.
+        
+        // Check if selection is inside a table to activate it
+        if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0)
+            let node = range.startContainer
+            if (node.nodeType === 3 && node.parentElement) {
+                node = node.parentElement
+            }
+            
+            const element = node as HTMLElement
+             const table = element.closest('table')
+             
+             if (table) {
+                 setActiveTable(table as HTMLTableElement)
+             } else {
+                 setActiveTable(null)
              }
+         }
+
+        if (selection && !selection.isCollapsed) {
+           setTimeout(() => {
+             // Logic to clear image selection if needed
            }, 0)
         }
       })
@@ -523,7 +545,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       
       // Clear all selection states immediately
       setSelectedImage(null)
-      setContextMenu(null)
+      setActiveTable(null)
       // Clear iframe body to ensure Portals are unmounted
       setIframeBody(null)
     }
@@ -537,33 +559,80 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     setPreviewKey(prev => prev + 1)
   }
 
-  const handleContextMenuAction = (action: string) => {
-    if (!contextMenu) return
-
-    const { target, cell } = contextMenu
-    const handler = new TableHandler(target)
+  const handleTableAction = (action: string, payload?: any) => {
+    if (!activeTable) return
+    const handler = new TableHandler(activeTable)
+    const index = payload?.index
 
     switch (action) {
       case 'insertRowBefore':
-        handler.insertRowBefore(cell)
-        break
       case 'insertRowAfter':
-        handler.insertRowAfter(cell)
-        break
       case 'deleteRow':
-        handler.deleteRow(cell)
+        if (index !== undefined) {
+             const row = activeTable.rows[index]
+             if (row && row.cells.length > 0) {
+                 // Use the first cell of the row as reference
+                 const cell = row.cells[0]
+                 if (action === 'insertRowBefore') handler.insertRowBefore(cell)
+                 if (action === 'insertRowAfter') handler.insertRowAfter(cell)
+                 if (action === 'deleteRow') handler.deleteRow(cell)
+             }
+        }
         break
       case 'insertColumnBefore':
-        handler.insertColumnBefore(cell)
-        break
       case 'insertColumnAfter':
-        handler.insertColumnAfter(cell)
-        break
       case 'deleteColumn':
-        handler.deleteColumn(cell)
+        if (index !== undefined && activeTable.rows.length > 0) {
+             // Use the cell in the first row as reference
+             const cell = activeTable.rows[0].cells[index]
+             if (cell) {
+                 if (action === 'insertColumnBefore') handler.insertColumnBefore(cell)
+                 if (action === 'insertColumnAfter') handler.insertColumnAfter(cell)
+                 if (action === 'deleteColumn') handler.deleteColumn(cell)
+             }
+        }
         break
       case 'deleteTable':
         handler.deleteTable()
+        setActiveTable(null)
+        break
+      case 'mergeCells':
+        if (payload?.bounds) {
+             const { startRow, endRow, startCol, endCol } = payload.bounds
+             const cells: HTMLTableCellElement[] = []
+             for (let r = startRow; r <= endRow; r++) {
+                 for (let c = startCol; c <= endCol; c++) {
+                     const cell = handler.getCellAt(r, c)
+                     if (cell && !cells.includes(cell)) {
+                         cells.push(cell)
+                     }
+                 }
+             }
+             if (cells.length > 1) handler.mergeCells(cells)
+        }
+        break
+      case 'splitCell':
+        if (payload?.bounds) {
+             const cell = handler.getCellAt(payload.bounds.startRow, payload.bounds.startCol)
+             if (cell) handler.splitCell(cell)
+        }
+        break
+      case 'valignTop':
+      case 'valignMiddle':
+      case 'valignBottom':
+        if (payload?.bounds) {
+             const { startRow, endRow, startCol, endCol } = payload.bounds
+             for (let r = startRow; r <= endRow; r++) {
+                 for (let c = startCol; c <= endCol; c++) {
+                     const cell = handler.getCellAt(r, c)
+                     if (cell) {
+                         if (action === 'valignTop') cell.style.verticalAlign = 'top'
+                         if (action === 'valignMiddle') cell.style.verticalAlign = 'middle'
+                         if (action === 'valignBottom') cell.style.verticalAlign = 'bottom'
+                     }
+                 }
+             }
+        }
         break
     }
 
@@ -658,13 +727,12 @@ export default function EditablePreview({ selectedFile, content, onContentChange
         iframeBody
       )}
 
-      {/* Table Context Menu */}
-      {isEditing && contextMenu && (
-        <TableContextMenu
-          target={contextMenu.target}
-          position={contextMenu.position}
-          onClose={() => setContextMenu(null)}
-          onAction={handleContextMenuAction}
+      {/* Table Smart Toolbar */}
+      {isEditing && activeTable && (
+        <TableSmartToolbar
+          iframeRef={iframeRef}
+          activeTable={activeTable}
+          onAction={handleTableAction}
         />
       )}
     </div>

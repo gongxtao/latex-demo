@@ -1,0 +1,157 @@
+import React, { useEffect, useRef, useState } from 'react'
+
+export interface SmartContextMenuProps {
+  position: { x: number; y: number }
+  onClose: () => void
+  onAction: (action: string) => void
+  contextType: 'row' | 'col' | 'cell' | 'selection'
+  canMerge?: boolean
+  canSplit?: boolean
+}
+
+// Icons
+const ChevronRight = () => (
+  <svg className="w-4 h-4 text-gray-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+  </svg>
+)
+
+const CheckIcon = () => (
+  <svg className="w-4 h-4 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+  </svg>
+)
+
+const InsertIcon = () => (
+    <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+    </svg>
+)
+
+const DeleteIcon = () => (
+    <svg className="w-4 h-4 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
+)
+
+const AlignIcon = () => (
+    <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+)
+
+const MergeIcon = () => (
+    <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+    </svg>
+)
+
+
+const SmartContextMenu: React.FC<SmartContextMenuProps> = ({ 
+  position, onClose, onAction, contextType, canMerge, canSplit 
+}) => {
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Check if click is outside menu
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        onClose()
+      }
+    }
+
+    // Add listener to document (main window)
+    document.addEventListener('mousedown', handleClickOutside)
+    
+    // Also try to add listener to iframe if accessible? 
+    // Usually clicks inside iframe are handled by the iframe event listeners in parent component
+    // which call setContextMenu(null).
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [onClose])
+
+  const handleAction = (action: string) => {
+    onAction(action)
+    onClose()
+  }
+
+  const SubMenu = ({ title, icon, children, id }: { title: string, icon?: React.ReactNode, children: React.ReactNode, id: string }) => {
+      const isHovered = activeSubmenu === id
+      return (
+          <div 
+            className="relative"
+            onMouseEnter={() => setActiveSubmenu(id)}
+            onMouseLeave={() => setActiveSubmenu(null)}
+          >
+              <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center transition-colors">
+                  {icon}
+                  {title}
+                  <ChevronRight />
+              </button>
+              {isHovered && (
+                  <div className="absolute left-full top-0 bg-white shadow-xl rounded-md border border-gray-200 py-1 min-w-[160px] -ml-1">
+                      {children}
+                  </div>
+              )}
+          </div>
+      )
+  }
+
+  const MenuItem = ({ label, icon, onClick, className = "" }: { label: string, icon?: React.ReactNode, onClick: () => void, className?: string }) => (
+      <button onClick={onClick} className={`w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center transition-colors ${className}`}>
+          {icon}
+          {label}
+      </button>
+  )
+
+  const Separator = () => <div className="h-px bg-gray-200 my-1" />
+
+  return (
+    <div
+      ref={menuRef}
+      className="fixed bg-white shadow-xl rounded-md border border-gray-200 py-1 z-[9999] min-w-[200px] pointer-events-auto"
+      style={{ top: position.y, left: position.x }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <MenuItem label="复制" onClick={() => handleAction('copy')} />
+      <MenuItem label="粘贴" onClick={() => handleAction('paste')} />
+      
+      <Separator />
+      
+      <SubMenu id="align" title="垂直对齐" icon={<AlignIcon />}>
+          <MenuItem label="顶端对齐" icon={<span className="w-4 mr-2 text-center">↑</span>} onClick={() => handleAction('valignTop')} />
+          <MenuItem label="垂直居中" icon={<span className="w-4 mr-2 text-center">↕</span>} onClick={() => handleAction('valignMiddle')} />
+          <MenuItem label="底端对齐" icon={<span className="w-4 mr-2 text-center">↓</span>} onClick={() => handleAction('valignBottom')} />
+      </SubMenu>
+
+      <SubMenu id="insert" title="插入行列" icon={<InsertIcon />}>
+          <MenuItem label="上方插入1行" icon={<span className="w-4 mr-2 text-center">↟</span>} onClick={() => handleAction('insertRowBefore')} />
+          <MenuItem label="下方插入1行" icon={<span className="w-4 mr-2 text-center">↡</span>} onClick={() => handleAction('insertRowAfter')} />
+          <MenuItem label="左侧插入1列" icon={<span className="w-4 mr-2 text-center">↞</span>} onClick={() => handleAction('insertColumnBefore')} />
+          <MenuItem label="右侧插入1列" icon={<span className="w-4 mr-2 text-center">↠</span>} onClick={() => handleAction('insertColumnAfter')} />
+      </SubMenu>
+
+      <SubMenu id="delete" title="删除行列" icon={<DeleteIcon />}>
+          <MenuItem label="删除1行" className="text-red-600" onClick={() => handleAction('deleteRow')} />
+          <MenuItem label="删除1列" className="text-red-600" onClick={() => handleAction('deleteColumn')} />
+          <MenuItem label="删除整个表格" className="text-red-600" onClick={() => handleAction('deleteTable')} />
+      </SubMenu>
+
+      {(canMerge || canSplit) && <Separator />}
+      
+      {canMerge && (
+        <MenuItem label="合并单元格" icon={<MergeIcon />} onClick={() => handleAction('mergeCells')} />
+      )}
+      
+      {canSplit && (
+        <MenuItem label="取消合并" icon={<MergeIcon />} onClick={() => handleAction('splitCell')} />
+      )}
+
+    </div>
+  )
+}
+
+export default SmartContextMenu
