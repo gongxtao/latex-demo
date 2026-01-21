@@ -35,7 +35,7 @@ export interface ToggleButtonConfig extends BaseButtonConfig {
 
 export interface PickerButtonConfig extends BaseButtonConfig {
   type: 'picker'
-  picker: 'color-text' | 'color-background' | 'image' | 'image-floating' | 'table'
+  picker: 'color-text' | 'color-background' | 'image' | 'image-floating' | 'table' | 'line-spacing'
   icon?: ComponentType<any>
 }
 
