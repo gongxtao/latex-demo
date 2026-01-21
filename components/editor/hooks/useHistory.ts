@@ -1,7 +1,9 @@
 import { useState, useCallback, useRef } from 'react'
+import { FloatingImageItem } from '../FloatingImageLayer'
 
 interface HistoryState {
   html: string
+  floatingImages: FloatingImageItem[]
   timestamp: number
 }
 
@@ -11,21 +13,40 @@ interface HistoryStore {
   future: HistoryState[]
 }
 
-export default function useHistory(initialContent: string) {
+const isSameImages = (a: FloatingImageItem[], b: FloatingImageItem[]) => {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i += 1) {
+    const left = a[i]
+    const right = b[i]
+    if (
+      left.id !== right.id ||
+      left.src !== right.src ||
+      left.x !== right.x ||
+      left.y !== right.y ||
+      left.width !== right.width ||
+      left.height !== right.height
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
+export default function useHistory(initialState: { html: string; floatingImages: FloatingImageItem[] }) {
   const historyRef = useRef<HistoryStore>({
     past: [],
-    present: { html: initialContent, timestamp: Date.now() },
+    present: { html: initialState.html, floatingImages: initialState.floatingImages, timestamp: Date.now() },
     future: []
   })
   
   // Force update to trigger re-renders when history changes (for UI buttons)
   const [, forceUpdate] = useState({})
 
-  const push = useCallback((newHtml: string) => {
+  const push = useCallback((nextState: { html: string; floatingImages: FloatingImageItem[] }) => {
     const { past, present } = historyRef.current
     
     // Avoid pushing identical content
-    if (present.html === newHtml) return
+    if (present.html === nextState.html && isSameImages(present.floatingImages, nextState.floatingImages)) return
 
     const newPast = [...past, present]
     if (newPast.length > 50) {
@@ -34,7 +55,7 @@ export default function useHistory(initialContent: string) {
 
     historyRef.current = {
       past: newPast,
-      present: { html: newHtml, timestamp: Date.now() },
+      present: { html: nextState.html, floatingImages: nextState.floatingImages, timestamp: Date.now() },
       future: []
     }
     forceUpdate({})
@@ -54,7 +75,7 @@ export default function useHistory(initialContent: string) {
     }
     forceUpdate({})
     
-    return previous.html
+    return previous
   }, [])
 
   const redo = useCallback(() => {
@@ -71,13 +92,13 @@ export default function useHistory(initialContent: string) {
     }
     forceUpdate({})
 
-    return next.html
+    return next
   }, [])
 
-  const reset = useCallback((content: string) => {
+  const reset = useCallback((nextState: { html: string; floatingImages: FloatingImageItem[] }) => {
     historyRef.current = {
       past: [],
-      present: { html: content, timestamp: Date.now() },
+      present: { html: nextState.html, floatingImages: nextState.floatingImages, timestamp: Date.now() },
       future: []
     }
     forceUpdate({})
@@ -90,6 +111,6 @@ export default function useHistory(initialContent: string) {
     reset,
     canUndo: historyRef.current.past.length > 0,
     canRedo: historyRef.current.future.length > 0,
-    current: historyRef.current.present.html
+    current: historyRef.current.present
   }
 }

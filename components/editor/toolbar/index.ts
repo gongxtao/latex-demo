@@ -47,7 +47,7 @@ export { useDropdownState } from './hooks/useDropdownState'
 export { useEditorState } from './hooks/useEditorState'
 export type { UseEditorCommandsOptions } from './hooks/useEditorCommands'
 export type { UseDropdownStateOptions } from './hooks/useDropdownState'
-export type { UseEditorStateOptions, EditorState } from './hooks/useEditorState'
+export type { EditorState } from './hooks/useEditorState'
 
 // Config
 export * from './config'

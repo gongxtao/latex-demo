@@ -15,10 +15,19 @@ interface EditablePreviewProps {
   selectedFile: string | null
   content: string
   onContentChange: (content: string) => void
+  floatingImages: FloatingImageItem[]
+  onFloatingImagesChange: (images: FloatingImageItem[]) => void
   isGenerating?: boolean
 }
 
-export default function EditablePreview({ selectedFile, content, onContentChange, isGenerating = false }: EditablePreviewProps) {
+export default function EditablePreview({
+  selectedFile,
+  content,
+  onContentChange,
+  floatingImages,
+  onFloatingImagesChange,
+  isGenerating = false
+}: EditablePreviewProps) {
   const [isEditing, setIsEditing] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [previewKey, setPreviewKey] = useState(0)
@@ -28,22 +37,25 @@ export default function EditablePreview({ selectedFile, content, onContentChange
   const isUpdatingRef = useRef(false)
   const globalClickHandlerRef = useRef<((e: MouseEvent) => void) | null>(null)
   const lastSyncedContentRef = useRef(content)
+  const floatingImagesRef = useRef(floatingImages)
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null)
   const [iframeBody, setIframeBody] = useState<HTMLElement | null>(null)
   const [activeTable, setActiveTable] = useState<HTMLTableElement | null>(null)
-  const [floatingImages, setFloatingImages] = useState<FloatingImageItem[]>([])
   const [selectedFloatingImageId, setSelectedFloatingImageId] = useState<string | null>(null)
   const previewContainerRef = useRef<HTMLDivElement>(null)
   
   // History management
-  const { push: pushHistory, undo, redo, canUndo, canRedo } = useHistory(content)
+  const { push: pushHistory, undo, redo, canUndo, canRedo } = useHistory({
+    html: content,
+    floatingImages
+  })
 
   // Create debounced sync function
   const debouncedSync = useMemo(
     () => debounce((newHtml: string) => {
       onContentChange(newHtml)
       lastSyncedContentRef.current = newHtml
-      pushHistory(newHtml)
+      pushHistory({ html: newHtml, floatingImages: floatingImagesRef.current })
     }, 1000),
     [onContentChange, pushHistory]
   )
@@ -54,6 +66,10 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       debouncedSync.cancel()
     }
   }, [debouncedSync])
+
+  useEffect(() => {
+    floatingImagesRef.current = floatingImages
+  }, [floatingImages])
 
   // Helper function to get node path
   const getNodePath = (node: Node): number[] => {
@@ -175,19 +191,25 @@ export default function EditablePreview({ selectedFile, content, onContentChange
 
   const handleUndo = useCallback(() => {
     debouncedSync.flush()
-    const newHtml = undo()
-    if (newHtml !== null) {
-      onContentChange(newHtml)
+    const nextState = undo()
+    if (nextState !== null) {
+      onContentChange(nextState.html)
+      lastSyncedContentRef.current = nextState.html
+      onFloatingImagesChange(nextState.floatingImages)
+      setSelectedFloatingImageId(null)
     }
-  }, [undo, onContentChange, debouncedSync])
+  }, [undo, onContentChange, debouncedSync, onFloatingImagesChange])
 
   const handleRedo = useCallback(() => {
     debouncedSync.flush()
-    const newHtml = redo()
-    if (newHtml !== null) {
-      onContentChange(newHtml)
+    const nextState = redo()
+    if (nextState !== null) {
+      onContentChange(nextState.html)
+      lastSyncedContentRef.current = nextState.html
+      onFloatingImagesChange(nextState.floatingImages)
+      setSelectedFloatingImageId(null)
     }
-  }, [redo, onContentChange, debouncedSync])
+  }, [redo, onContentChange, debouncedSync, onFloatingImagesChange])
 
   // Image resize functionality moved to ImageResizer component
 
@@ -584,10 +606,11 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     const x = rect ? Math.max(0, Math.round(rect.width / 2 - baseWidth / 2)) : 20
     const y = rect ? Math.max(0, Math.round(rect.height / 2 - baseHeight / 2)) : 20
 
-    setFloatingImages(prev => [
-      ...prev,
+    const nextImages = [
+      ...floatingImagesRef.current,
       { id, src: imageUrl, x, y, width: baseWidth, height: baseHeight }
-    ])
+    ]
+    onFloatingImagesChange(nextImages)
 
     const loader = new Image()
     loader.onload = () => {
@@ -598,16 +621,20 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       const containerRect = previewContainerRef.current?.getBoundingClientRect()
       const centeredX = containerRect ? Math.max(0, Math.round(containerRect.width / 2 - targetWidth / 2)) : x
       const centeredY = containerRect ? Math.max(0, Math.round(containerRect.height / 2 - targetHeight / 2)) : y
-      setFloatingImages(prev =>
-        prev.map(item =>
-          item.id === id
-            ? { ...item, width: targetWidth, height: targetHeight, x: centeredX, y: centeredY }
-            : item
-        )
+      const resizedImages = floatingImagesRef.current.map(item =>
+        item.id === id
+          ? { ...item, width: targetWidth, height: targetHeight, x: centeredX, y: centeredY }
+          : item
       )
+      onFloatingImagesChange(resizedImages)
+      pushHistory({ html: lastSyncedContentRef.current, floatingImages: resizedImages })
     }
     loader.src = imageUrl
-  }, [])
+  }, [onFloatingImagesChange, pushHistory])
+
+  const handleFloatingImagesCommit = useCallback(() => {
+    pushHistory({ html: lastSyncedContentRef.current, floatingImages: floatingImagesRef.current })
+  }, [pushHistory])
 
   const handleTableAction = (action: string, payload?: any) => {
     if (!activeTable) return
@@ -824,10 +851,11 @@ export default function EditablePreview({ selectedFile, content, onContentChange
             {selectedFile && floatingImages.length > 0 && (
               <FloatingImageLayer
                 images={floatingImages}
-                onChange={setFloatingImages}
+                onChange={onFloatingImagesChange}
                 isEditing={isEditing}
                 selectedId={selectedFloatingImageId}
                 onSelect={setSelectedFloatingImageId}
+                onCommit={handleFloatingImagesCommit}
               />
             )}
             {/* Render resizer outside iframe but position it over it, OR render inside if using Portal correctly */}

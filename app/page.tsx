@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import FileSelector from '@/components/FileSelector'
 import ChatBox from '@/components/ChatBox'
 import EditablePreview from '@/components/editor/EditablePreview'
+import { FloatingImageItem } from '@/components/editor/FloatingImageLayer'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -14,10 +15,12 @@ export default function Home() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [htmlContent, setHtmlContent] = useState<string>('')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [floatingImages, setFloatingImages] = useState<FloatingImageItem[]>([])
 
   // Load file content when a file is selected
   useEffect(() => {
     if (selectedFile) {
+      setFloatingImages([])
       fetch(`/api/file-content?filename=${encodeURIComponent(selectedFile)}`)
         .then(res => res.json())
         .then(data => {
@@ -158,7 +161,8 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           htmlContent: htmlContent,
-          filename: filename
+          filename: filename,
+          floatingImages: floatingImages
         })
       })
 
@@ -217,6 +221,8 @@ export default function Home() {
               selectedFile={selectedFile}
               content={htmlContent}
               onContentChange={handleContentChange}
+              floatingImages={floatingImages}
+              onFloatingImagesChange={setFloatingImages}
               isGenerating={isGenerating}
             />
           </div>

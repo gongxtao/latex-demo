@@ -16,6 +16,7 @@ interface FloatingImageLayerProps {
   isEditing: boolean
   selectedId: string | null
   onSelect: (id: string | null) => void
+  onCommit?: () => void
 }
 
 export default function FloatingImageLayer({
@@ -23,7 +24,8 @@ export default function FloatingImageLayer({
   onChange,
   isEditing,
   selectedId,
-  onSelect
+  onSelect,
+  onCommit
 }: FloatingImageLayerProps) {
   const [isResizing, setIsResizing] = useState(false)
   const [currentSize, setCurrentSize] = useState<{ width: number; height: number } | null>(null)
@@ -86,6 +88,7 @@ export default function FloatingImageLayer({
         event.stopPropagation()
         onChange(imagesRef.current.filter(image => image.id !== selectedId))
         onSelect(null)
+        onCommit?.()
       }
     }
 
@@ -95,7 +98,7 @@ export default function FloatingImageLayer({
       window.removeEventListener('mousedown', handleGlobalMouseDown, true)
       window.removeEventListener('keydown', handleKeyDown, true)
     }
-  }, [isEditing, onSelect, onChange, selectedId])
+  }, [isEditing, onSelect, onChange, selectedId, onCommit])
 
   const handlePointerDown = (e: React.PointerEvent, id: string) => {
     if (!isEditing || e.button !== 0) return
@@ -155,6 +158,7 @@ export default function FloatingImageLayer({
     dragPendingRef.current = null
     dragStateRef.current = null
     e.currentTarget.releasePointerCapture(e.pointerId)
+    onCommit?.()
   }
 
   const handleResizePointerDown = (e: React.PointerEvent, id: string, direction: string) => {
@@ -258,6 +262,7 @@ export default function FloatingImageLayer({
     resizePendingRef.current = null
     resizeStateRef.current = null
     e.currentTarget.releasePointerCapture(e.pointerId)
+    onCommit?.()
   }
 
   const handleStyle: React.CSSProperties = {

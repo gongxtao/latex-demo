@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   let browser = null
 
   try {
-    const { htmlContent, filename } = await request.json()
+    const { htmlContent, filename, floatingImages } = await request.json()
 
     if (!htmlContent) {
       return NextResponse.json(
@@ -48,8 +48,10 @@ export async function POST(request: Request) {
 
     const page = await browser.newPage()
     
+    const withFloatingImages = appendFloatingImages(htmlContent, floatingImages)
+
     // 设置页面内容
-    await page.setContent(htmlContent, {
+    await page.setContent(withFloatingImages, {
       waitUntil: ['networkidle0', 'load'],
       timeout: 30000
     })
@@ -92,5 +94,47 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
+}
+
+const appendFloatingImages = (htmlContent: string, floatingImages?: Array<{
+  id: string
+  src: string
+  x: number
+  y: number
+  width: number
+  height: number
+}>) => {
+  if (!floatingImages || floatingImages.length === 0) {
+    return htmlContent
+  }
+
+  const overlay = `
+<div id="floating-image-overlay" style="position:absolute;inset:0;pointer-events:none;z-index:999999;">
+${floatingImages.map(image => (
+  `<img src="${image.src}" style="position:absolute;left:${image.x}px;top:${image.y}px;width:${image.width}px;height:${image.height}px;" />`
+)).join('')}
+</div>
+`
+
+  const overlayStyle = `
+<style id="floating-image-overlay-style">
+  body { position: relative; }
+</style>
+`
+
+  let nextHtml = htmlContent
+  if (nextHtml.includes('</head>')) {
+    nextHtml = nextHtml.replace('</head>', `${overlayStyle}</head>`)
+  } else {
+    nextHtml = `${overlayStyle}${nextHtml}`
+  }
+
+  if (nextHtml.includes('</body>')) {
+    nextHtml = nextHtml.replace('</body>', `${overlay}</body>`)
+  } else {
+    nextHtml = `${nextHtml}${overlay}`
+  }
+
+  return nextHtml
 }
 
