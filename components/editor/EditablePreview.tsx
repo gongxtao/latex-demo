@@ -42,6 +42,7 @@ export default function EditablePreview({
   const [iframeBody, setIframeBody] = useState<HTMLElement | null>(null)
   const [activeTable, setActiveTable] = useState<HTMLTableElement | null>(null)
   const [selectedFloatingImageId, setSelectedFloatingImageId] = useState<string | null>(null)
+  const [iframeScroll, setIframeScroll] = useState({ x: 0, y: 0 })
   const previewContainerRef = useRef<HTMLDivElement>(null)
   
   // History management
@@ -70,6 +71,37 @@ export default function EditablePreview({
   useEffect(() => {
     floatingImagesRef.current = floatingImages
   }, [floatingImages])
+
+  useEffect(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+    const iframeDoc = iframe.contentDocument
+    const iframeWindow = iframe.contentWindow
+    if (!iframeDoc || !iframeWindow) return
+    let rafId = 0
+    const updateScroll = () => {
+      const docEl = iframeDoc.documentElement
+      const body = iframeDoc.body
+      const x = docEl?.scrollLeft ?? body?.scrollLeft ?? 0
+      const y = docEl?.scrollTop ?? body?.scrollTop ?? 0
+      setIframeScroll({ x, y })
+    }
+    const handleScroll = () => {
+      if (rafId !== 0) return
+      rafId = iframeWindow.requestAnimationFrame(() => {
+        rafId = 0
+        updateScroll()
+      })
+    }
+    updateScroll()
+    iframeWindow.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      if (rafId !== 0) {
+        iframeWindow.cancelAnimationFrame(rafId)
+      }
+      iframeWindow.removeEventListener('scroll', handleScroll)
+    }
+  }, [content, previewKey, isEditing])
 
   // Helper function to get node path
   const getNodePath = (node: Node): number[] => {
@@ -856,6 +888,7 @@ export default function EditablePreview({
                 selectedId={selectedFloatingImageId}
                 onSelect={setSelectedFloatingImageId}
                 onCommit={handleFloatingImagesCommit}
+                scrollOffset={iframeScroll}
               />
             )}
             {/* Render resizer outside iframe but position it over it, OR render inside if using Portal correctly */}

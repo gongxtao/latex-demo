@@ -17,6 +17,7 @@ interface FloatingImageLayerProps {
   selectedId: string | null
   onSelect: (id: string | null) => void
   onCommit?: () => void
+  scrollOffset: { x: number; y: number }
 }
 
 export default function FloatingImageLayer({
@@ -25,7 +26,8 @@ export default function FloatingImageLayer({
   isEditing,
   selectedId,
   onSelect,
-  onCommit
+  onCommit,
+  scrollOffset
 }: FloatingImageLayerProps) {
   const [isResizing, setIsResizing] = useState(false)
   const [currentSize, setCurrentSize] = useState<{ width: number; height: number } | null>(null)
@@ -288,7 +290,16 @@ export default function FloatingImageLayer({
   )
 
   return (
-    <div ref={layerRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2147483647 }}>
+    <div
+      ref={layerRef}
+      style={{
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+        zIndex: 2147483647,
+        transform: `translate(${-scrollOffset.x}px, ${-scrollOffset.y}px)`
+      }}
+    >
       {images.map(image => {
         const isSelected = image.id === selectedId
         return (
