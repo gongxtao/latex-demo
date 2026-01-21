@@ -1,11 +1,8 @@
 import { IconProps } from './IconProps'
 
 const OutdentIcon: React.FC<IconProps> = ({ size = 18, ...props }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <line x1="3" y1="6" x2="21" y2="6" />
-    <line x1="9" y1="12" x2="21" y2="12" />
-    <line x1="3" y1="18" x2="21" y2="18" />
-    <polyline points="7 9 3 12 7 15" />
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path d="M11 17h10v-2H11v2zm-8-5l4 4V8l-4 4zm0 9h18v-2H3v2zM3 3v2h18V3H3zm8 6h10V7H11v2zm0 4h10v-2H11v2z" />
   </svg>
 )
 

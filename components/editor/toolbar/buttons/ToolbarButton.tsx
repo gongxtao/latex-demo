@@ -23,15 +23,15 @@ const ToolbarButton = memo(
       const baseStyles = 'transition-colors disabled:cursor-not-allowed disabled:opacity-50'
 
       const variantStyles = {
-        default: 'px-2 py-1 bg-white border rounded hover:bg-gray-100 disabled:bg-gray-100 disabled:text-gray-400',
-        color: 'w-8 h-8 border rounded hover:bg-gray-100 disabled:bg-gray-100 disabled:opacity-50',
-        text: 'px-2 py-1 font-medium hover:bg-gray-100 rounded disabled:text-gray-400'
+        default: 'w-8 h-8 flex items-center justify-center bg-transparent border-none rounded hover:bg-gray-100 disabled:opacity-50 text-gray-700',
+        color: 'w-8 h-8 flex items-center justify-center bg-transparent border-none rounded hover:bg-gray-100 disabled:opacity-50 relative',
+        text: 'h-8 px-2 flex items-center bg-transparent border-none rounded hover:bg-gray-100 disabled:opacity-50 text-gray-700 font-medium text-sm'
       }
 
       const sizeStyles = {
-        sm: 'text-xs',
-        md: 'text-sm',
-        lg: 'text-base'
+        sm: '',
+        md: '',
+        lg: ''
       }
 
       return (

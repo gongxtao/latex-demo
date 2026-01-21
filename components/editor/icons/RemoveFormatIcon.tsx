@@ -1,13 +1,8 @@
 import { IconProps } from './IconProps'
 
 const RemoveFormatIcon: React.FC<IconProps> = ({ size = 18, ...props }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    {/* Eraser body */}
-    <path d="M7 21L2.7 16.7c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" />
-    {/* Bottom line */}
-    <path d="M22 21H7" />
-    {/* Middle line */}
-    <path d="M5 11l9 9" />
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path d="M15.14 3c-.51 0-1.02.2-1.41.59L2.59 14.73c-.78.78-.78 2.05 0 2.83L6.45 21.42c.39.39.9.58 1.41.58H21v-2h-4.5l6.78-6.78c.78-.78.78-2.05 0-2.83l-6.87-6.87C16.17 3.2 15.65 3 15.14 3zM7.86 20l-3.86-3.86 5.46-5.46 3.86 3.86L7.86 20z" />
   </svg>
 )
 

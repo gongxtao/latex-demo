@@ -125,6 +125,7 @@ const ButtonRenderer: React.FC<ButtonRendererProps> = ({
               disabled={disabled}
               title={config.label}
               onImageSelect={onImageSelect}
+              icon={config.icon}
             />
           ) : null
         case 'image-floating':
@@ -134,6 +135,7 @@ const ButtonRenderer: React.FC<ButtonRendererProps> = ({
               disabled={disabled}
               title={config.label}
               onImageSelect={onFloatingImageSelect}
+              icon={config.icon}
             />
           ) : null
         case 'table':

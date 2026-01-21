@@ -1,10 +1,9 @@
 import { IconProps } from './IconProps'
 
 const UnlinkIcon: React.FC<IconProps> = ({ size = 18, ...props }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <path d="M9 7H7a4 4 0 0 0 0 8h2" />
-    <path d="M15 7h2a4 4 0 1 1 0 8h-2" />
-    <line x1="6" y1="6" x2="18" y2="18" />
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z" />
+    <rect x="3" y="11" width="18" height="2" transform="rotate(45 12 12)" fill="currentColor" stroke="white" strokeWidth="2" />
   </svg>
 )
 

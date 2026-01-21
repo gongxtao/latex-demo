@@ -36,7 +36,14 @@ import {
   OutdentIcon,
   SuperscriptIcon,
   SubscriptIcon,
-  RemoveFormatIcon
+  RemoveFormatIcon,
+  LineSpacingIcon,
+  BoldIcon,
+  ItalicIcon,
+  UnderlineIcon,
+  StrikeThroughIcon,
+  FloatingImageIcon,
+  ImageIcon
 } from './icons'
 
 /**
@@ -50,37 +57,6 @@ export interface EditorToolbarProps {
   onFloatingImageInsert?: (imageUrl: string) => void
 }
 
-// Icon mapping for button configs
-const ICON_MAP: Record<string, React.ComponentType<any>> = {
-  'undo': UndoIcon,
-  'redo': RedoIcon,
-  'align-left': () => <AlignIcon type="left" />,
-  'align-center': () => <AlignIcon type="center" />,
-  'align-right': () => <AlignIcon type="right" />,
-  'align-justify': () => <AlignIcon type="justify" />,
-  'outdent': OutdentIcon,
-  'indent': IndentIcon,
-  'bulleted-list': () => <ListIcon type="unordered" />,
-  'numbered-list': () => <ListIcon type="ordered" />,
-  'link': LinkIcon,
-  'unlink': UnlinkIcon,
-  'hr': DividerIcon,
-  'superscript': SuperscriptIcon,
-  'subscript': SubscriptIcon,
-  'clear-format': RemoveFormatIcon
-}
-
-/**
- * Assign icons to button configs
- */
-function assignIconsToConfigs(configs: any[]): any[] {
-  if (!configs) return []
-  return configs.map(config => ({
-    ...config,
-    icon: ICON_MAP[config.id]
-  }))
-}
-
 /**
  * Main toolbar component with configuration-driven rendering
  */
@@ -91,6 +67,45 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   disabled: propsDisabled,
   onFloatingImageInsert
 }) => {
+  // Icon mapping for button configs
+  // Defined inside component to ensure all imports are available and to force re-evaluation
+  const iconMap: Record<string, React.ComponentType<any>> = {
+    'undo': UndoIcon,
+    'redo': RedoIcon,
+    'align-left': () => <AlignIcon type="left" />,
+    'align-center': () => <AlignIcon type="center" />,
+    'align-right': () => <AlignIcon type="right" />,
+    'align-justify': () => <AlignIcon type="justify" />,
+    'outdent': OutdentIcon,
+    'indent': IndentIcon,
+    'bulleted-list': () => <ListIcon type="unordered" />,
+    'numbered-list': () => <ListIcon type="ordered" />,
+    'link': LinkIcon,
+    'unlink': UnlinkIcon,
+    'hr': DividerIcon,
+    'superscript': SuperscriptIcon,
+    'subscript': SubscriptIcon,
+    'clear-format': RemoveFormatIcon,
+    'line-spacing': LineSpacingIcon,
+    'format-bold': BoldIcon,
+    'format-italic': ItalicIcon,
+    'format-underline': UnderlineIcon,
+    'format-strike': StrikeThroughIcon,
+    'image': ImageIcon,
+    'floating-image': FloatingImageIcon
+  }
+
+  /**
+   * Assign icons to button configs
+   */
+  const assignIconsToConfigs = (configs: any[]): any[] => {
+    if (!configs) return []
+    return configs.map(config => ({
+      ...config,
+      icon: iconMap[config.id]
+    }))
+  }
+
   const disabled = propsDisabled || !isEditing
 
   // Use editor commands hook
@@ -117,10 +132,10 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
       case 'numbered-list': return { isActive: editorState.isOrderedList }
       
       // Toggles (Format)
-      case 'bold': return { isActive: editorState.isBold }
-      case 'italic': return { isActive: editorState.isItalic }
-      case 'underline': return { isActive: editorState.isUnderline }
-      case 'strikeThrough': return { isActive: editorState.isStrikeThrough }
+      case 'format-bold': return { isActive: editorState.isBold }
+      case 'format-italic': return { isActive: editorState.isItalic }
+      case 'format-underline': return { isActive: editorState.isUnderline }
+      case 'format-strike': return { isActive: editorState.isStrikeThrough }
       case 'subscript': return { isActive: editorState.isSubscript }
       case 'superscript': return { isActive: editorState.isSuperscript }
       

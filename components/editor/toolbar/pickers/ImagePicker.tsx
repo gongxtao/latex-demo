@@ -14,6 +14,8 @@ export interface ImagePickerProps {
   /** Whether the picker is disabled */
   disabled?: boolean
   title?: string
+  /** Custom icon component */
+  icon?: React.ComponentType<any>
 }
 
 /**
@@ -21,7 +23,7 @@ export interface ImagePickerProps {
  * If using in ButtonRenderer, ensure onImageSelect callback is passed.
  */
 
-const ImagePicker: React.FC<ImagePickerProps> = ({ onImageSelect, disabled = false, title }) => {
+const ImagePicker: React.FC<ImagePickerProps> = ({ onImageSelect, disabled = false, title, icon: Icon }) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploading, setIsUploading] = useState(false)
 
@@ -90,7 +92,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({ onImageSelect, disabled = fal
         {isUploading ? (
           <div className="animate-spin h-4 w-4 border-2 border-gray-600 border-t-transparent rounded-full" />
         ) : (
-          <ImageIcon />
+          Icon ? <Icon /> : <ImageIcon />
         )}
       </ToolbarButton>
     </div>

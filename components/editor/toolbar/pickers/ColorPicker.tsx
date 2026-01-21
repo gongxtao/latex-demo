@@ -23,6 +23,35 @@ export interface ColorPickerProps {
   className?: string
 }
 
+const ColorIndicator = ({ type, color }: { type: ColorPickerType; color: string }) => {
+  if (type === 'text') {
+    return (
+      <div className="flex flex-col items-center justify-center relative w-6 h-6">
+        <svg viewBox="0 0 24 24" className="w-full h-full">
+          <text x="50%" y="18" fontSize="18" fontWeight="bold" fontFamily="serif" textAnchor="middle" fill="currentColor">A</text>
+        </svg>
+        <div 
+          className="h-[3px] absolute bottom-0 left-1 right-1" 
+          style={{ backgroundColor: color === 'transparent' ? '#000' : color }}
+        />
+      </div>
+    )
+  }
+
+  // Background color indicator
+  return (
+    <div className="flex flex-col items-center justify-center relative w-6 h-6">
+      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor" style={{ transform: 'scale(0.85)' }}>
+        <path d="M16.56 8.94L7.62 0 6.21 1.41l2.38 2.38-5.15 5.15c-.59.59-.59 1.54 0 2.12l5.5 5.5c.29.29.68.44 1.06.44s.77-.15 1.06-.44l5.5-5.5c.59-.58.59-1.53 0-2.12zM5.21 10L10 5.21 14.79 10H5.21zM19 11.5s-2 2.17-2 3.5c0 1.1.9 2 2 2s2-.9 2-2c0-1.33-2-3.5-2-3.5z"/><path d="M0 20h24v4H0z"/>
+      </svg>
+      <div 
+        className="h-[3px] absolute bottom-0 left-1 right-1" 
+        style={{ backgroundColor: color === 'transparent' ? 'transparent' : color }}
+      />
+    </div>
+  )
+}
+
 const ColorPicker: React.FC<ColorPickerProps> = ({
   type,
   onColorSelect,
@@ -57,7 +86,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
         title={label}
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`min-w-[40px] px-2 ${className}`}
+        className={`px-1 ${className}`}
       >
         <ColorIndicator type={type} color={selectedColor} />
       </ToolbarButton>
@@ -99,15 +128,15 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
           label="Default colors"
           columns={10}
         />
-
-        {/* Custom Color */}
-        <div className="border-t border-gray-200 pt-3">
+        
+        {/* Custom Color Button */}
+        <div className="mt-3 pt-2 border-t border-gray-200">
           <button
             type="button"
             onClick={handleCustomColor}
-            className="w-full text-left px-1 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors"
+            className="w-full text-center text-sm text-blue-600 hover:text-blue-800 py-1"
           >
-            Custom...
+            Custom color...
           </button>
         </div>
       </PickerDropdown>
@@ -116,46 +145,3 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
 }
 
 export default ColorPicker
-
-// ============================================================================
-// Color Indicator Component
-// ============================================================================
-
-interface ColorIndicatorProps {
-  type: ColorPickerType
-  color: string
-}
-
-const ColorIndicator: React.FC<ColorIndicatorProps> = ({ type, color }) => {
-  if (type === 'text') {
-    return (
-      <div className="w-full h-full flex items-center justify-center relative">
-        <svg width="16" height="16" viewBox="0 0 16 16" className="text-gray-700">
-          <text x="8" y="10" textAnchor="middle" fontSize="10" fontWeight="bold" fill="currentColor" fontFamily="Arial">A</text>
-          <rect x="4" y="11.5" width="8" height="1.5" fill="currentColor" opacity="0.8" rx="0.5"/>
-        </svg>
-        <div
-          className="absolute bottom-[3px] left-1/2 transform -translate-x-1/2 w-2 h-0.5 rounded-full"
-          style={{ backgroundColor: color }}
-        />
-      </div>
-    )
-  }
-
-  // Background type
-  return (
-    <div className="w-full h-full flex items-center justify-center relative">
-      <svg width="16" height="16" viewBox="0 0 16 16" className="text-gray-700">
-        <text x="8" y="10" textAnchor="middle" fontSize="10" fontWeight="bold" fill="currentColor" fontFamily="Arial">A</text>
-        <rect x="3" y="11" width="10" height="3" fill="currentColor" opacity="0.2" rx="1"/>
-      </svg>
-      <div
-        className="absolute bottom-[3px] left-1/2 transform -translate-x-1/2 w-2 h-2 rounded-sm border border-gray-400"
-        style={{
-          backgroundColor: color === 'transparent' ? 'white' : color,
-          border: color === 'transparent' ? '1px dashed #9CA3AF' : '1px solid rgba(0,0,0,0.1)'
-        }}
-      />
-    </div>
-  )
-}

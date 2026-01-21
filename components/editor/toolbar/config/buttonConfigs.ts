@@ -64,10 +64,10 @@ export const HISTORY_BUTTONS: CommandButtonConfig[] = [
 // ============================================================================
 
 export const FORMAT_BUTTONS: ToggleButtonConfig[] = [
-  { id: 'bold', type: 'toggle', command: 'bold', label: 'Bold', shortcut: 'Ctrl+B', content: 'B' },
-  { id: 'italic', type: 'toggle', command: 'italic', label: 'Italic', shortcut: 'Ctrl+I', content: 'I' },
-  { id: 'underline', type: 'toggle', command: 'underline', label: 'Underline', shortcut: 'Ctrl+U', content: 'U' },
-  { id: 'strikeThrough', type: 'toggle', command: 'strikeThrough', label: 'Strikethrough', shortcut: 'Ctrl+Shift+S', content: 'S' },
+  { id: 'format-bold', type: 'toggle', command: 'bold', label: 'Bold', shortcut: 'Ctrl+B' },
+  { id: 'format-italic', type: 'toggle', command: 'italic', label: 'Italic', shortcut: 'Ctrl+I' },
+  { id: 'format-underline', type: 'toggle', command: 'underline', label: 'Underline', shortcut: 'Ctrl+U' },
+  { id: 'format-strike', type: 'toggle', command: 'strikeThrough', label: 'Strikethrough', shortcut: 'Ctrl+Shift+S' },
   { id: 'superscript', type: 'toggle', command: 'superscript', label: 'Superscript' },
   { id: 'subscript', type: 'toggle', command: 'subscript', label: 'Subscript' }
 ]
@@ -98,7 +98,8 @@ export const ALIGNMENT_BUTTONS: CommandButtonConfig[] = [
 
 export const INDENT_BUTTONS: CommandButtonConfig[] = [
   { id: 'outdent', type: 'command', command: 'outdent', label: 'Outdent', shortcut: 'Shift+Tab' },
-  { id: 'indent', type: 'command', command: 'indent', label: 'Indent', shortcut: 'Tab' }
+  { id: 'indent', type: 'command', command: 'indent', label: 'Indent', shortcut: 'Tab' },
+  { id: 'line-spacing', type: 'command', command: 'lineSpacing', label: 'Line Spacing' } // Placeholder command
 ]
 
 // ============================================================================

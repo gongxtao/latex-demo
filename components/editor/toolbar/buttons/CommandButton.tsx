@@ -36,9 +36,11 @@ const CommandButton = React.forwardRef<HTMLButtonElement, CommandButtonProps>(
         onClick={onClick}
         className={`
           transition-colors disabled:cursor-not-allowed disabled:opacity-50
-          px-2 py-1 bg-white border rounded hover:bg-gray-100
-          disabled:bg-gray-100 disabled:text-gray-400
-          ${isActive ? 'bg-blue-100 border-blue-300' : ''}
+          w-8 h-8 flex items-center justify-center
+          bg-transparent border-none rounded hover:bg-gray-100
+          text-gray-700
+          disabled:text-gray-400
+          ${isActive ? 'bg-gray-200' : ''}
           ${className}
         `}
         {...props}

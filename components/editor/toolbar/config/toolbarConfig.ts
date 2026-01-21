@@ -84,36 +84,37 @@ export const TOOLBAR_CONFIG: ToolbarConfig = {
         {
           id: 'format',
           items: [], // FORMAT_BUTTONS
-          separator: false
+          separator: true
         },
         {
           id: 'colors',
           items: [], // COLOR_BUTTONS
-          separator: false
+          separator: true
         },
         {
           id: 'alignment',
           items: [], // ALIGNMENT_BUTTONS
-          separator: false
+          separator: true
         },
         {
           id: 'indent',
           items: [], // INDENT_BUTTONS
-          separator: false
+          separator: true
         },
         {
           id: 'lists',
-          items: [] // LIST_BUTTONS
+          items: [], // LIST_BUTTONS
+          separator: true
         },
         {
           id: 'links',
           items: [], // LINK_BUTTONS
-          separator: false
+          separator: true
         },
         {
           id: 'media',
           items: [], // MEDIA_BUTTONS
-          separator: true
+          separator: false
         },
         {
           id: 'utility',
