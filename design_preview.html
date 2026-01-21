@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor Toolbar Design Preview</title>
+    <style>
+        :root {
+            --toolbar-bg: #ffffff;
+            --icon-color: #444746;
+            --icon-hover-bg: #f1f3f4;
+            --separator-color: #dadce0;
+            --font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: center;
+            padding-top: 50px;
+            margin: 0;
+        }
+
+        .toolbar-container {
+            background-color: var(--toolbar-bg);
+            border-radius: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px;
+            max-width: 95%;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            padding: 0 4px;
+            position: relative;
+        }
+
+        /* Separator Line */
+        .toolbar-group:not(:last-child)::after {
+            content: '';
+            display: block;
+            width: 1px;
+            height: 20px;
+            background-color: var(--separator-color);
+            margin-left: 8px;
+            margin-right: 4px;
+        }
+
+        .tool-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--icon-color);
+            transition: background-color 0.2s;
+            padding: 0;
+            margin: 0 1px;
+        }
+
+        .tool-btn:hover {
+            background-color: var(--icon-hover-bg);
+        }
+
+        .tool-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        /* Dropdown Style for Title, Font, Size */
+        .tool-dropdown {
+            display: flex;
+            align-items: center;
+            height: 32px;
+            padding: 0 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--icon-color);
+            font-size: 14px;
+            font-weight: 500;
+            margin: 0 2px;
+        }
+
+        .tool-dropdown:hover {
+            background-color: var(--icon-hover-bg);
+        }
+
+        .tool-dropdown span {
+            margin-right: 4px;
+            white-space: nowrap;
+        }
+
+        .tool-dropdown svg {
+            width: 12px;
+            height: 12px;
+            fill: currentColor;
+            opacity: 0.7;
+        }
+
+        /* Specific adjustments */
+        .tool-input-wrapper {
+            display: flex;
+            align-items: center;
+        }
+        
+        /* Color indicator underline */
+        .color-indicator {
+            position: relative;
+        }
+        
+        .color-bar {
+            position: absolute;
+            bottom: 4px;
+            left: 6px;
+            right: 6px;
+            height: 3px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="toolbar-container">
+        <!-- Group 1: Undo, Redo, Clear Formatting -->
+        <div class="toolbar-group">
+            <button class="tool-btn" title="Undo">
+                <svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
+            </button>
+            <button class="tool-btn" title="Redo">
+                <svg viewBox="0 0 24 24"><path d="M18.4 10.6C16.55 9 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/></svg>
+            </button>
+            <button class="tool-btn" title="Clear Formatting">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M15.14 3c-.51 0-1.02.2-1.41.59L2.59 14.73c-.78.78-.78 2.05 0 2.83L6.45 21.42c.39.39.9.58 1.41.58H21v-2h-4.5l6.78-6.78c.78-.78.78-2.05 0-2.83l-6.87-6.87C16.17 3.2 15.65 3 15.14 3zM7.86 20l-3.86-3.86 5.46-5.46 3.86 3.86L7.86 20z"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Group 2: Title, Font, Size -->
+        <div class="toolbar-group">
+            <div class="tool-dropdown">
+                <span>正文</span>
+                <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+            </div>
+            <div class="tool-dropdown">
+                <span>字体</span>
+                <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+            </div>
+            <div class="tool-dropdown">
+                <span>11</span>
+                <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+            </div>
+        </div>
+
+        <!-- Group 3: Bold, Italic, Underline, Strikethrough, Superscript, Subscript -->
+        <div class="toolbar-group">
+            <button class="tool-btn" title="Bold">
+                <svg viewBox="0 0 24 24"><path d="M15.6 10.79c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4-4H7v14h7.04c2.09 0 3.71-1.7 3.71-3.79 0-1.52-.86-2.82-2.15-3.42zM10 6.5h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-3v-3zm3.5 9H10v-3h3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5z"/></svg>
+            </button>
+            <button class="tool-btn" title="Italic">
+                <svg viewBox="0 0 24 24"><path d="M10 4v3h2.21l-3.42 8H6v3h8v-3h-2.21l3.42-8H18V4z"/></svg>
+            </button>
+            <button class="tool-btn" title="Underline">
+                <svg viewBox="0 0 24 24"><path d="M12 17c3.31 0 6-2.69 6-6V3h-2.5v8c0 1.93-1.57 3.5-3.5 3.5S8.5 12.93 8.5 11V3H6v8c0 3.31 2.69 6 6 6zm-7 2v2h14v-2H5z"/></svg>
+            </button>
+            <button class="tool-btn" title="Strikethrough">
+                <svg viewBox="0 0 24 24"><path d="M10 19h4v-3h-4v3zM5 4v3h5v3h4V7h5V4H5zM3 14h18v-2H3v2z"/></svg>
+            </button>
+            <button class="tool-btn" title="Superscript">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <text x="5" y="17" font-family="serif" font-size="16" font-style="italic" font-weight="bold">X</text>
+                    <text x="14" y="10" font-family="serif" font-size="10" font-weight="bold">2</text>
+                </svg>
+            </button>
+            <button class="tool-btn" title="Subscript">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <text x="5" y="14" font-family="serif" font-size="16" font-style="italic" font-weight="bold">X</text>
+                    <text x="14" y="20" font-family="serif" font-size="10" font-weight="bold">2</text>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Group 4: Text color, Background color -->
+        <div class="toolbar-group">
+            <button class="tool-btn color-indicator" title="Text Color">
+                <svg viewBox="0 0 24 24"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm0-8h2v2h-2z" style="display:none"/><text x="5" y="18" font-size="18" font-weight="bold" font-family="serif">A</text></svg>
+                <div class="color-bar" style="background-color: #000;"></div>
+            </button>
+            <button class="tool-btn color-indicator" title="Background Color">
+                <svg viewBox="0 0 24 24" style="transform: scale(0.85);"><path d="M16.56 8.94L7.62 0 6.21 1.41l2.38 2.38-5.15 5.15c-.59.59-.59 1.54 0 2.12l5.5 5.5c.29.29.68.44 1.06.44s.77-.15 1.06-.44l5.5-5.5c.59-.58.59-1.53 0-2.12zM5.21 10L10 5.21 14.79 10H5.21zM19 11.5s-2 2.17-2 3.5c0 1.1.9 2 2 2s2-.9 2-2c0-1.33-2-3.5-2-3.5z"/><path d="M0 20h24v4H0z"/></svg>
+                <div class="color-bar" style="background-color: #fbbc04;"></div>
+            </button>
+        </div>
+
+        <!-- Group 5: Alignments -->
+        <div class="toolbar-group">
+            <button class="tool-btn" title="Align Left">
+                <svg viewBox="0 0 24 24"><path d="M15 15H3v2h12v-2zm0-8H3v2h12V7zM3 13h18v-2H3v2zm0 8h18v-2H3v2zM3 3v2h18V3H3z"/></svg>
+            </button>
+            <button class="tool-btn" title="Align Center">
+                <svg viewBox="0 0 24 24"><path d="M7 15v2h10v-2H7zm-4 6h18v-2H3v2zm0-8h18v-2H3v2zm4-6v2h10V7H7zM3 3v2h18V3H3z"/></svg>
+            </button>
+            <button class="tool-btn" title="Align Right">
+                <svg viewBox="0 0 24 24"><path d="M3 21h18v-2H3v2zm6-4h12v-2H9v2zm-6-4h18v-2H3v2zm6-4h12V7H9v2zM3 3v2h18V3H3z"/></svg>
+            </button>
+            <button class="tool-btn" title="Justify">
+                <svg viewBox="0 0 24 24"><path d="M3 21h18v-2H3v2zm0-4h18v-2H3v2zm0-4h18v-2H3v2zm0-4h18V7H3v2zm0-6v2h18V3H3z"/></svg>
+            </button>
+        </div>
+
+        <!-- Group 6: Indentation -->
+        <div class="toolbar-group">
+            <button class="tool-btn" title="Outdent">
+                <svg viewBox="0 0 24 24"><path d="M11 17h10v-2H11v2zm-8-5l4 4V8l-4 4zm0 9h18v-2H3v2zM3 3v2h18V3H3zm8 6h10V7H11v2zm0 4h10v-2H11v2z"/></svg>
+            </button>
+            <button class="tool-btn" title="Indent">
+                <svg viewBox="0 0 24 24"><path d="M3 21h18v-2H3v2zM3 8v8l4-4-4-4zm8 9h10v-2H11v2zM3 3v2h18V3H3zm8 6h10V7H11v2zm0 4h10v-2H11v2z"/></svg>
+            </button>
+            <button class="tool-btn" title="Line Spacing">
+                <svg viewBox="0 0 24 24"><path d="M6 7h2.5L5 3.5 1.5 7H4v10H1.5L5 20.5 8.5 17H6V7zm4-2v2h12V5H10zm0 14h12v-2H10v2zm0-6h12v-2H10v2z"/></svg>
+            </button>
+        </div>
+
+        <!-- Group 7: Lists -->
+        <div class="toolbar-group">
+            <button class="tool-btn" title="Bulleted List">
+                <svg viewBox="0 0 24 24"><path d="M4 10.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm0-6c-.83 0-1.5.67-1.5 1.5S3.17 7.5 4 7.5 5.5 6.83 5.5 6 4.83 4.5 4 4.5zm0 12c-.83 0-1.5.68-1.5 1.5s.68 1.5 1.5 1.5 1.5-.68 1.5-1.5-.67-1.5-1.5-1.5zM7 19h14v-2H7v2zm0-6h14v-2H7v2zm0-8v2h14V5H7z"/></svg>
+            </button>
+            <button class="tool-btn" title="Numbered List">
+                <svg viewBox="0 0 24 24"><path d="M4 10H2v2h2v-2zm0-6H2v2h2V4zm0 12H2v2h2v-2zm2-8h14v-2H6v2zm0-6h14V4H6v2zm0 14h14v-2H6v2zM2 15h2v2H2z" style="display:none"/><text x="1" y="17" font-size="12" font-weight="bold">1</text><path d="M7 5h14v2H7zM7 11h14v2H7zM7 17h14v2H7z"/></svg>
+            </button>
+        </div>
+
+        <!-- Group 8: Links -->
+        <div class="toolbar-group">
+            <button class="tool-btn" title="Insert Link">
+                <svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+            </button>
+            <button class="tool-btn" title="Remove Link">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <!-- Original Link Icon Path -->
+                    <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
+                    <!-- Slash Line -->
+                    <rect x="3" y="11" width="18" height="2" transform="rotate(45 12 12)" fill="currentColor" stroke="var(--toolbar-bg)" stroke-width="2" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Group 9: Insert Objects -->
+        <div class="toolbar-group">
+            <button class="tool-btn" title="Insert Image">
+                <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+            </button>
+            <button class="tool-btn" title="Insert Floating Image">
+                 <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" style="transform: scale(0.8) translate(3px, 3px);"/><path d="M4 4h4v4H4z" fill="currentColor" opacity="0.7"/></svg>
+            </button>
+            <button class="tool-btn" title="Insert Table">
+                <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM8 20H4v-4h4v4zm0-6H4v-4h4v4zm0-6H4V4h4v4zm6 12h-4v-4h4v4zm0-6h-4v-4h4v4zm0-6h-4V4h4v4zm6 12h-4v-4h4v4zm0-6h-4v-4h4v4zm0-6h-4V4h4v4z"/></svg>
+            </button>
+            <button class="tool-btn" title="Horizontal Line">
+                <svg viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>
+            </button>
+        </div>
+    </div>
+
+</body>
+</html>
