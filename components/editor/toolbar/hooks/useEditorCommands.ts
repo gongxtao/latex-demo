@@ -170,6 +170,30 @@ export function useEditorCommands({
     // Custom styles
     fontFamily: (name: string) => applyCustomStyle('fontFamily', name),
     fontSize: (size: string) => applyCustomStyle('fontSize', size),
+    lineHeight: (value: string) => applyFormat(doc => {
+      const selection = doc.getSelection()
+      if (!selection || selection.rangeCount === 0) return
+      
+      // Find parent block element
+      let node = selection.anchorNode
+      // If node is text node, get parent
+      if (node && node.nodeType === 3) {
+        node = node.parentNode
+      }
+      
+      // Traverse up to find a block element
+      while (node && node !== doc.body) {
+        const el = node as HTMLElement
+        const display = typeof window !== 'undefined' ? window.getComputedStyle(el).display : 'block'
+        
+        // Simple check for block elements or common text containers
+        if (['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'BLOCKQUOTE'].includes(el.nodeName) || display === 'block') {
+          el.style.lineHeight = value
+          break
+        }
+        node = node.parentNode
+      }
+    }),
 
     // Insert table
     insertTable: (rows: number, cols: number) => {

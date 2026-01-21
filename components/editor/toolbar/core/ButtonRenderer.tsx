@@ -14,6 +14,7 @@ import ToggleButton from '../buttons/ToggleButton'
 import ColorPicker from '../pickers/ColorPicker'
 import ImagePicker from '../pickers/ImagePicker'
 import TablePicker from '../pickers/TablePicker'
+import LineSpacingPicker from '../pickers/LineSpacingPicker'
 
 // Input components
 import ToolbarSelect from '../inputs/ToolbarSelect'
@@ -37,6 +38,8 @@ export interface ButtonRendererProps {
   onFloatingImageSelect?: (imageUrl: string) => void
   /** Callback for table selection */
   onTableSelect?: (rows: number, cols: number) => void
+  /** Callback for line spacing selection */
+  onLineSpacingSelect?: (value: string) => void
   /** Callback for select change */
   onSelectChange?: (id: string, value: string) => void
 }
@@ -51,6 +54,7 @@ const ButtonRenderer: React.FC<ButtonRendererProps> = ({
   onImageSelect,
   onFloatingImageSelect,
   onTableSelect,
+  onLineSpacingSelect,
   onSelectChange
 }) => {
   const handleCommand = (command: string, arg?: string) => {
@@ -144,6 +148,15 @@ const ButtonRenderer: React.FC<ButtonRendererProps> = ({
               key={config.id}
               disabled={disabled}
               onTableSelect={onTableSelect}
+            />
+          ) : null
+        case 'line-spacing':
+          return onLineSpacingSelect ? (
+            <LineSpacingPicker
+              key={config.id}
+              disabled={disabled}
+              onLineSpacingSelect={onLineSpacingSelect}
+              icon={config.icon}
             />
           ) : null
         default:

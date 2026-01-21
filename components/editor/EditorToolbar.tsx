@@ -216,6 +216,11 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
     }
   }
 
+  // Line spacing handler
+  const handleLineSpacingSelect = (value: string) => {
+    commands.lineHeight(value)
+  }
+
   return (
     <div className="flex flex-col bg-gray-50 border-b border-gray-300">
       {/* Row 1: Core editing features */}
@@ -322,6 +327,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
               config={config}
               disabled={disabled}
               onCommand={handleCommand}
+              onLineSpacingSelect={handleLineSpacingSelect}
             />
           ))}
         </ToolbarGroup>

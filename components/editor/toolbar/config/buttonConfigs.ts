@@ -96,10 +96,10 @@ export const ALIGNMENT_BUTTONS: CommandButtonConfig[] = [
 // Indentation Buttons
 // ============================================================================
 
-export const INDENT_BUTTONS: CommandButtonConfig[] = [
+export const INDENT_BUTTONS: (CommandButtonConfig | PickerButtonConfig)[] = [
   { id: 'outdent', type: 'command', command: 'outdent', label: 'Outdent', shortcut: 'Shift+Tab' },
   { id: 'indent', type: 'command', command: 'indent', label: 'Indent', shortcut: 'Tab' },
-  { id: 'line-spacing', type: 'command', command: 'lineSpacing', label: 'Line Spacing' } // Placeholder command
+  { id: 'line-spacing', type: 'picker', picker: 'line-spacing', label: 'Line Spacing' }
 ]
 
 // ============================================================================
