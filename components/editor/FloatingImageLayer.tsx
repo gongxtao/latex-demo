@@ -30,6 +30,22 @@ export default function FloatingImageLayer({
   const imagesRef = useRef(images)
   const layerRef = useRef<HTMLDivElement | null>(null)
   const ignoreNextGlobalDownRef = useRef(false)
+  const dragRafRef = useRef<number | null>(null)
+  const dragPendingRef = useRef<{ x: number; y: number } | null>(null)
+  const dragStateRef = useRef<{ id: string; startX: number; startY: number; startLeft: number; startTop: number } | null>(null)
+  const resizeRafRef = useRef<number | null>(null)
+  const resizePendingRef = useRef<{ width: number; height: number; x: number; y: number } | null>(null)
+  const resizeStateRef = useRef<{
+    id: string
+    direction: string
+    startX: number
+    startY: number
+    startWidth: number
+    startHeight: number
+    startLeft: number
+    startTop: number
+    ratio: number
+  } | null>(null)
 
   const updateImage = useCallback((id: string, updates: Partial<FloatingImageItem>) => {
     onChange(
@@ -64,6 +80,13 @@ export default function FloatingImageLayer({
       if (event.key === 'Escape') {
         onSelect(null)
       }
+
+      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedId) {
+        event.preventDefault()
+        event.stopPropagation()
+        onChange(imagesRef.current.filter(image => image.id !== selectedId))
+        onSelect(null)
+      }
     }
 
     window.addEventListener('mousedown', handleGlobalMouseDown, true)
@@ -72,10 +95,10 @@ export default function FloatingImageLayer({
       window.removeEventListener('mousedown', handleGlobalMouseDown, true)
       window.removeEventListener('keydown', handleKeyDown, true)
     }
-  }, [isEditing, onSelect])
+  }, [isEditing, onSelect, onChange, selectedId])
 
-  const handleMouseDown = (e: React.MouseEvent, id: string) => {
-    if (!isEditing) return
+  const handlePointerDown = (e: React.PointerEvent, id: string) => {
+    if (!isEditing || e.button !== 0) return
     e.preventDefault()
     e.stopPropagation()
     onSelect(id)
@@ -84,30 +107,58 @@ export default function FloatingImageLayer({
     const image = imagesRef.current.find(item => item.id === id)
     if (!image) return
 
-    const startX = e.clientX
-    const startY = e.clientY
-    const startLeft = image.x
-    const startTop = image.y
-
-    const onMouseMove = (event: MouseEvent) => {
-      event.preventDefault()
-      event.stopPropagation()
-      const dx = event.clientX - startX
-      const dy = event.clientY - startY
-      updateImage(id, { x: startLeft + dx, y: startTop + dy })
+    dragStateRef.current = {
+      id,
+      startX: e.clientX,
+      startY: e.clientY,
+      startLeft: image.x,
+      startTop: image.y
     }
 
-    const onMouseUp = () => {
-      window.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('mouseup', onMouseUp)
-    }
-
-    window.addEventListener('mousemove', onMouseMove)
-    window.addEventListener('mouseup', onMouseUp)
+    e.currentTarget.setPointerCapture(e.pointerId)
   }
 
-  const handleResizeMouseDown = (e: React.MouseEvent, id: string, direction: string) => {
-    if (!isEditing) return
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragStateRef.current) return
+    e.preventDefault()
+    e.stopPropagation()
+
+    const { id, startX, startY, startLeft, startTop } = dragStateRef.current
+    const dx = e.clientX - startX
+    const dy = e.clientY - startY
+    dragPendingRef.current = { x: startLeft + dx, y: startTop + dy }
+
+    if (dragRafRef.current === null) {
+      dragRafRef.current = window.requestAnimationFrame(() => {
+        dragRafRef.current = null
+        const pending = dragPendingRef.current
+        if (!pending) return
+        updateImage(id, { x: pending.x, y: pending.y })
+      })
+    }
+  }
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!dragStateRef.current) return
+    e.preventDefault()
+    e.stopPropagation()
+
+    const { id } = dragStateRef.current
+    if (dragRafRef.current !== null) {
+      window.cancelAnimationFrame(dragRafRef.current)
+      dragRafRef.current = null
+    }
+    const pending = dragPendingRef.current
+    if (pending) {
+      updateImage(id, { x: pending.x, y: pending.y })
+    }
+    dragPendingRef.current = null
+    dragStateRef.current = null
+    e.currentTarget.releasePointerCapture(e.pointerId)
+  }
+
+  const handleResizePointerDown = (e: React.PointerEvent, id: string, direction: string) => {
+    if (!isEditing || e.button !== 0) return
     e.preventDefault()
     e.stopPropagation()
     onSelect(id)
@@ -116,59 +167,97 @@ export default function FloatingImageLayer({
     const image = imagesRef.current.find(item => item.id === id)
     if (!image) return
 
-    const startX = e.clientX
-    const startY = e.clientY
-    const startWidth = image.width
-    const startHeight = image.height
-    const startLeft = image.x
-    const startTop = image.y
-    const ratio = startWidth / startHeight
-
-    setCurrentSize({ width: Math.round(startWidth), height: Math.round(startHeight) })
-
-    const onMouseMove = (event: MouseEvent) => {
-      event.preventDefault()
-      event.stopPropagation()
-
-      const dx = event.clientX - startX
-      const dy = event.clientY - startY
-
-      let newWidth = startWidth
-      let newHeight = startHeight
-      let newLeft = startLeft
-      let newTop = startTop
-
-      if (['nw', 'ne', 'sw', 'se'].includes(direction)) {
-        if (direction.includes('e')) newWidth = startWidth + dx
-        if (direction.includes('w')) newWidth = startWidth - dx
-        newWidth = Math.max(20, newWidth)
-        newHeight = newWidth / ratio
-        if (direction.includes('w')) newLeft = startLeft + (startWidth - newWidth)
-        if (direction.includes('n')) newTop = startTop + (startHeight - newHeight)
-      } else {
-        if (direction === 'e') newWidth = startWidth + dx
-        if (direction === 'w') newWidth = startWidth - dx
-        if (direction === 's') newHeight = startHeight + dy
-        if (direction === 'n') newHeight = startHeight - dy
-        newWidth = Math.max(20, newWidth)
-        newHeight = Math.max(20, newHeight)
-        if (direction === 'w') newLeft = startLeft + (startWidth - newWidth)
-        if (direction === 'n') newTop = startTop + (startHeight - newHeight)
-      }
-
-      setCurrentSize({ width: Math.round(newWidth), height: Math.round(newHeight) })
-      updateImage(id, { width: newWidth, height: newHeight, x: newLeft, y: newTop })
+    resizeStateRef.current = {
+      id,
+      direction,
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth: image.width,
+      startHeight: image.height,
+      startLeft: image.x,
+      startTop: image.y,
+      ratio: image.height === 0 ? 1 : image.width / image.height
     }
 
-    const onMouseUp = () => {
-      setIsResizing(false)
-      setCurrentSize(null)
-      window.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('mouseup', onMouseUp)
+    setCurrentSize({ width: Math.round(image.width), height: Math.round(image.height) })
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  const handleResizePointerMove = (e: React.PointerEvent) => {
+    if (!resizeStateRef.current) return
+    e.preventDefault()
+    e.stopPropagation()
+
+    const {
+      id,
+      direction,
+      startX,
+      startY,
+      startWidth,
+      startHeight,
+      startLeft,
+      startTop,
+      ratio
+    } = resizeStateRef.current
+
+    const dx = e.clientX - startX
+    const dy = e.clientY - startY
+
+    let newWidth = startWidth
+    let newHeight = startHeight
+    let newLeft = startLeft
+    let newTop = startTop
+
+    if (['nw', 'ne', 'sw', 'se'].includes(direction)) {
+      if (direction.includes('e')) newWidth = startWidth + dx
+      if (direction.includes('w')) newWidth = startWidth - dx
+      newWidth = Math.max(20, newWidth)
+      newHeight = newWidth / ratio
+      if (direction.includes('w')) newLeft = startLeft + (startWidth - newWidth)
+      if (direction.includes('n')) newTop = startTop + (startHeight - newHeight)
+    } else {
+      if (direction === 'e') newWidth = startWidth + dx
+      if (direction === 'w') newWidth = startWidth - dx
+      if (direction === 's') newHeight = startHeight + dy
+      if (direction === 'n') newHeight = startHeight - dy
+      newWidth = Math.max(20, newWidth)
+      newHeight = Math.max(20, newHeight)
+      if (direction === 'w') newLeft = startLeft + (startWidth - newWidth)
+      if (direction === 'n') newTop = startTop + (startHeight - newHeight)
     }
 
-    window.addEventListener('mousemove', onMouseMove)
-    window.addEventListener('mouseup', onMouseUp)
+    resizePendingRef.current = { width: newWidth, height: newHeight, x: newLeft, y: newTop }
+
+    if (resizeRafRef.current === null) {
+      resizeRafRef.current = window.requestAnimationFrame(() => {
+        resizeRafRef.current = null
+        const pending = resizePendingRef.current
+        if (!pending) return
+        setCurrentSize({ width: Math.round(pending.width), height: Math.round(pending.height) })
+        updateImage(id, { width: pending.width, height: pending.height, x: pending.x, y: pending.y })
+      })
+    }
+  }
+
+  const handleResizePointerUp = (e: React.PointerEvent) => {
+    if (!resizeStateRef.current) return
+    e.preventDefault()
+    e.stopPropagation()
+
+    const { id } = resizeStateRef.current
+    setIsResizing(false)
+    setCurrentSize(null)
+    if (resizeRafRef.current !== null) {
+      window.cancelAnimationFrame(resizeRafRef.current)
+      resizeRafRef.current = null
+    }
+    const pending = resizePendingRef.current
+    if (pending) {
+      updateImage(id, { width: pending.width, height: pending.height, x: pending.x, y: pending.y })
+    }
+    resizePendingRef.current = null
+    resizeStateRef.current = null
+    e.currentTarget.releasePointerCapture(e.pointerId)
   }
 
   const handleStyle: React.CSSProperties = {
@@ -186,7 +275,10 @@ export default function FloatingImageLayer({
     <div
       className="floating-resizer-handle"
       style={{ ...handleStyle, ...pos, cursor }}
-      onMouseDown={(e) => handleResizeMouseDown(e, id, dir)}
+      onPointerDown={(e) => handleResizePointerDown(e, id, dir)}
+      onPointerMove={handleResizePointerMove}
+      onPointerUp={handleResizePointerUp}
+      onPointerCancel={handleResizePointerUp}
     />
   )
 
@@ -205,7 +297,10 @@ export default function FloatingImageLayer({
               height: image.height,
               pointerEvents: isEditing ? 'auto' : 'none'
             }}
-            onMouseDown={(e) => handleMouseDown(e, image.id)}
+            onPointerDown={(e) => handlePointerDown(e, image.id)}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
           >
             <Image
               src={image.src}
