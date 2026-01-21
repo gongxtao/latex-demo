@@ -13,6 +13,7 @@ export interface ImagePickerProps {
   onImageSelect: (imageUrl: string) => void
   /** Whether the picker is disabled */
   disabled?: boolean
+  title?: string
 }
 
 /**
@@ -20,7 +21,7 @@ export interface ImagePickerProps {
  * If using in ButtonRenderer, ensure onImageSelect callback is passed.
  */
 
-const ImagePicker: React.FC<ImagePickerProps> = ({ onImageSelect, disabled = false }) => {
+const ImagePicker: React.FC<ImagePickerProps> = ({ onImageSelect, disabled = false, title }) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploading, setIsUploading] = useState(false)
 
@@ -81,7 +82,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({ onImageSelect, disabled = fal
         className="hidden"
       />
       <ToolbarButton
-        title={isUploading ? "Uploading..." : "Insert image"}
+        title={isUploading ? "Uploading..." : (title || "Insert image")}
         onClick={handleButtonClick}
         disabled={disabled || isUploading}
         className="min-w-[40px] px-2"

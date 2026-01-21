@@ -34,6 +34,7 @@ export interface ButtonRendererProps {
   onColorSelect?: (color: string, type: 'text' | 'background') => void
   /** Callback for image selection */
   onImageSelect?: (imageUrl: string) => void
+  onFloatingImageSelect?: (imageUrl: string) => void
   /** Callback for table selection */
   onTableSelect?: (rows: number, cols: number) => void
   /** Callback for select change */
@@ -48,6 +49,7 @@ const ButtonRenderer: React.FC<ButtonRendererProps> = ({
   onCommand,
   onColorSelect,
   onImageSelect,
+  onFloatingImageSelect,
   onTableSelect,
   onSelectChange
 }) => {
@@ -121,7 +123,17 @@ const ButtonRenderer: React.FC<ButtonRendererProps> = ({
             <ImagePicker
               key={config.id}
               disabled={disabled}
+              title={config.label}
               onImageSelect={onImageSelect}
+            />
+          ) : null
+        case 'image-floating':
+          return onFloatingImageSelect ? (
+            <ImagePicker
+              key={config.id}
+              disabled={disabled}
+              title={config.label}
+              onImageSelect={onFloatingImageSelect}
             />
           ) : null
         case 'table':

@@ -35,7 +35,7 @@ export interface ToggleButtonConfig extends BaseButtonConfig {
 
 export interface PickerButtonConfig extends BaseButtonConfig {
   type: 'picker'
-  picker: 'color-text' | 'color-background' | 'image' | 'table'
+  picker: 'color-text' | 'color-background' | 'image' | 'image-floating' | 'table'
   icon?: ComponentType<any>
 }
 
@@ -125,6 +125,7 @@ export const LINK_BUTTONS: CommandButtonConfig[] = [
 
 export const MEDIA_BUTTONS: (CommandButtonConfig | PickerButtonConfig)[] = [
   { id: 'image', type: 'picker', picker: 'image', label: 'Insert image' },
+  { id: 'floating-image', type: 'picker', picker: 'image-floating', label: 'Insert floating image' },
   { id: 'table', type: 'picker', picker: 'table', label: 'Insert table' },
   { id: 'hr', type: 'command', command: 'insertHorizontalRule', label: 'Horizontal line' }
 ]

@@ -6,6 +6,7 @@ import debounce from 'lodash/debounce'
 import EditorToolbar from './EditorToolbar'
 import useHistory from './hooks/useHistory'
 import ImageResizer from './ImageResizer'
+import FloatingImageLayer, { FloatingImageItem } from './FloatingImageLayer'
 import TableSmartToolbar from './toolbar/TableSmartToolbar'
 
 import { TableHandler } from './utils/table'
@@ -30,6 +31,9 @@ export default function EditablePreview({ selectedFile, content, onContentChange
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null)
   const [iframeBody, setIframeBody] = useState<HTMLElement | null>(null)
   const [activeTable, setActiveTable] = useState<HTMLTableElement | null>(null)
+  const [floatingImages, setFloatingImages] = useState<FloatingImageItem[]>([])
+  const [selectedFloatingImageId, setSelectedFloatingImageId] = useState<string | null>(null)
+  const previewContainerRef = useRef<HTMLDivElement>(null)
   
   // History management
   const { push: pushHistory, undo, redo, canUndo, canRedo } = useHistory(content)
@@ -295,6 +299,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     // Handle global mousedown for deselection (more reliable than click)
     const handleGlobalMouseDown = (e: MouseEvent) => {
       if (!isEditing) return
+      setSelectedFloatingImageId(null)
       
       let target = e.target as HTMLElement
       // Handle text nodes
@@ -324,6 +329,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     // Handle mouseup as fallback for click (sometimes click is swallowed during editing)
     const handleMouseUp = (e: MouseEvent) => {
        if (!isEditing) return
+       setSelectedFloatingImageId(null)
        const target = e.target as HTMLElement
        if (target.tagName === 'IMG') {
          setSelectedImage(target as HTMLImageElement)
@@ -555,6 +561,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       // Clear all selection states immediately
       setSelectedImage(null)
       setActiveTable(null)
+      setSelectedFloatingImageId(null)
       // Clear iframe body to ensure Portals are unmounted
       setIframeBody(null)
     }
@@ -567,6 +574,40 @@ export default function EditablePreview({ selectedFile, content, onContentChange
   const handleRefresh = () => {
     setPreviewKey(prev => prev + 1)
   }
+
+  const handleInsertFloatingImage = useCallback((imageUrl: string) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+    const baseWidth = 240
+    const baseHeight = 160
+    const container = previewContainerRef.current
+    const rect = container?.getBoundingClientRect()
+    const x = rect ? Math.max(0, Math.round(rect.width / 2 - baseWidth / 2)) : 20
+    const y = rect ? Math.max(0, Math.round(rect.height / 2 - baseHeight / 2)) : 20
+
+    setFloatingImages(prev => [
+      ...prev,
+      { id, src: imageUrl, x, y, width: baseWidth, height: baseHeight }
+    ])
+
+    const loader = new Image()
+    loader.onload = () => {
+      const naturalWidth = loader.naturalWidth || baseWidth
+      const naturalHeight = loader.naturalHeight || baseHeight
+      const targetWidth = Math.min(320, naturalWidth)
+      const targetHeight = Math.round(targetWidth * (naturalHeight / naturalWidth))
+      const containerRect = previewContainerRef.current?.getBoundingClientRect()
+      const centeredX = containerRect ? Math.max(0, Math.round(containerRect.width / 2 - targetWidth / 2)) : x
+      const centeredY = containerRect ? Math.max(0, Math.round(containerRect.height / 2 - targetHeight / 2)) : y
+      setFloatingImages(prev =>
+        prev.map(item =>
+          item.id === id
+            ? { ...item, width: targetWidth, height: targetHeight, x: centeredX, y: centeredY }
+            : item
+        )
+      )
+    }
+    loader.src = imageUrl
+  }, [])
 
   const handleTableAction = (action: string, payload?: any) => {
     if (!activeTable) return
@@ -736,6 +777,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
         onContentChange={debouncedSync}
         isEditing={!!selectedFile && isEditing}
         disabled={!selectedFile}
+        onFloatingImageInsert={handleInsertFloatingImage}
       />
 
       {/* Editable Preview Area */}
@@ -746,17 +788,20 @@ export default function EditablePreview({ selectedFile, content, onContentChange
           if (isEditing && e.target === e.currentTarget) {
             setSelectedImage(null)
             setActiveTable(null)
+            setSelectedFloatingImageId(null)
           }
         }}
       >
         {selectedFile ? (
           <div 
             className="max-w-5xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden relative"
+            ref={previewContainerRef}
             onMouseDown={(e) => {
               // Also clear when clicking on the paper margin (if any)
               if (isEditing && e.target === e.currentTarget) {
                 setSelectedImage(null)
                 setActiveTable(null)
+                setSelectedFloatingImageId(null)
               }
             }}
           >
@@ -776,6 +821,15 @@ export default function EditablePreview({ selectedFile, content, onContentChange
               className="w-full h-full min-h-[800px] border-0"
               title="Editable Preview"
             />
+            {selectedFile && floatingImages.length > 0 && (
+              <FloatingImageLayer
+                images={floatingImages}
+                onChange={setFloatingImages}
+                isEditing={isEditing}
+                selectedId={selectedFloatingImageId}
+                onSelect={setSelectedFloatingImageId}
+              />
+            )}
             {/* Render resizer outside iframe but position it over it, OR render inside if using Portal correctly */}
             {isEditing && iframeBody && createPortal(
         <ImageResizer 

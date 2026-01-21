@@ -47,6 +47,7 @@ export interface EditorToolbarProps {
   onContentChange: (content: string) => void
   isEditing: boolean
   disabled?: boolean
+  onFloatingImageInsert?: (imageUrl: string) => void
 }
 
 // Icon mapping for button configs
@@ -87,7 +88,8 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   iframeRef,
   onContentChange,
   isEditing,
-  disabled: propsDisabled
+  disabled: propsDisabled,
+  onFloatingImageInsert
 }) => {
   const disabled = propsDisabled || !isEditing
 
@@ -169,6 +171,10 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   // Image selection handler
   const handleImageSelect = (imageUrl: string) => {
     commands.insertImage(imageUrl)
+  }
+
+  const handleFloatingImageSelect = (imageUrl: string) => {
+    onFloatingImageInsert?.(imageUrl)
   }
 
   // Table selection handler
@@ -342,6 +348,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
               disabled={disabled}
               onCommand={handleCommand}
               onImageSelect={handleImageSelect}
+              onFloatingImageSelect={handleFloatingImageSelect}
               onTableSelect={handleTableSelect}
             />
           ))}
