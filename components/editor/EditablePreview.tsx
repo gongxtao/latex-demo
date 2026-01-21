@@ -274,6 +274,7 @@ export default function EditablePreview({ selectedFile, content, onContentChange
           // The SmartToolbar is outside the iframe, so clicks there won't trigger this iframe click listener.
           // BUT, we might be clicking empty space in iframe.
           setActiveTable(null)
+          setSelectedImage(null)
       }
     }
     
@@ -335,6 +336,9 @@ export default function EditablePreview({ selectedFile, content, onContentChange
     // Add without event capture to let other events work normally
     setTimeout(() => {
       // Use capture for mousedown to ensure we catch it before any stopPropagation
+      // Also bind to window to catch everything
+      const win = iframeDoc.defaultView || window
+      win.addEventListener('mousedown', handleGlobalMouseDown, true)
       iframeDoc.addEventListener('mousedown', handleGlobalMouseDown, true)
       iframeDoc.addEventListener('click', handleGlobalClick, false)
       iframeDoc.addEventListener('mouseup', handleMouseUp, false)
@@ -490,6 +494,9 @@ export default function EditablePreview({ selectedFile, content, onContentChange
         const style = iframeDoc.createElement('style')
         style.id = 'editor-style'
         style.textContent = `
+          html, body {
+            min-height: 100%;
+          }
           body[contenteditable="true"] {
             cursor: text;
           }
@@ -520,6 +527,8 @@ export default function EditablePreview({ selectedFile, content, onContentChange
           iframeDoc.body.removeEventListener('blur', handleBlur)
           // Remove global click handler
           if (globalClickHandlerRef.current) {
+            const win = iframeDoc.defaultView || window
+            win.removeEventListener('mousedown', handleGlobalMouseDown, true)
             iframeDoc.removeEventListener('click', globalClickHandlerRef.current, false)
             iframeDoc.removeEventListener('mousedown', handleGlobalMouseDown, true)
           }
@@ -730,9 +739,27 @@ export default function EditablePreview({ selectedFile, content, onContentChange
       />
 
       {/* Editable Preview Area */}
-      <div className="flex-1 overflow-auto bg-gray-50 p-4 relative">
+      <div 
+        className="flex-1 overflow-auto bg-gray-50 p-4 relative"
+        onMouseDown={(e) => {
+          // Clear selection when clicking on the gray background area
+          if (isEditing && e.target === e.currentTarget) {
+            setSelectedImage(null)
+            setActiveTable(null)
+          }
+        }}
+      >
         {selectedFile ? (
-          <div className="max-w-5xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden relative">
+          <div 
+            className="max-w-5xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden relative"
+            onMouseDown={(e) => {
+              // Also clear when clicking on the paper margin (if any)
+              if (isEditing && e.target === e.currentTarget) {
+                setSelectedImage(null)
+                setActiveTable(null)
+              }
+            }}
+          >
             {/* Generating Overlay */}
             {isGenerating && (
               <div className="absolute top-0 left-0 right-0 bg-blue-500 text-white px-4 py-2 z-10 flex items-center space-x-2">
