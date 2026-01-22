@@ -37,6 +37,7 @@ export default function EditablePreview({
   const isUpdatingRef = useRef(false)
   const globalClickHandlerRef = useRef<((e: MouseEvent) => void) | null>(null)
   const lastSyncedContentRef = useRef(content)
+  const forceContentSyncRef = useRef(false)
   const floatingImagesRef = useRef(floatingImages)
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null)
   const [iframeBody, setIframeBody] = useState<HTMLElement | null>(null)
@@ -225,6 +226,7 @@ export default function EditablePreview({
     debouncedSync.flush()
     const nextState = undo()
     if (nextState !== null) {
+      forceContentSyncRef.current = true
       onContentChange(nextState.html)
       lastSyncedContentRef.current = nextState.html
       onFloatingImagesChange(nextState.floatingImages)
@@ -236,6 +238,7 @@ export default function EditablePreview({
     debouncedSync.flush()
     const nextState = redo()
     if (nextState !== null) {
+      forceContentSyncRef.current = true
       onContentChange(nextState.html)
       lastSyncedContentRef.current = nextState.html
       onFloatingImagesChange(nextState.floatingImages)
@@ -257,13 +260,14 @@ export default function EditablePreview({
     // Check if we need to update
     const isIframeEmpty = !iframeDoc.body || iframeDoc.body.childNodes.length === 0
     // Only write if content is different from last synced (external update) OR if iframe is empty (reload/refresh)
-    if (content === lastSyncedContentRef.current && !isIframeEmpty) {
+    if (!forceContentSyncRef.current && content === lastSyncedContentRef.current && !isIframeEmpty) {
       return
     }
 
     // If we are writing new content, cancel any pending debounced updates
     debouncedSync.cancel()
     lastSyncedContentRef.current = content
+    forceContentSyncRef.current = false
 
     // Save current state before updating
     if (!isInitialLoadRef.current && iframeDoc.body && isEditing) {
@@ -499,9 +503,17 @@ export default function EditablePreview({
         e.preventDefault()
         e.stopPropagation()
         if (e.shiftKey) {
-          handleRedo()
+          if (canRedo) {
+            handleRedo()
+          } else {
+            iframeDoc.execCommand('redo')
+          }
         } else {
-          handleUndo()
+          if (canUndo) {
+            handleUndo()
+          } else {
+            iframeDoc.execCommand('undo')
+          }
         }
         return
       }
@@ -600,7 +612,7 @@ export default function EditablePreview({
         iframeDoc.body.contentEditable = 'false'
       }
     }
-  }, [content, isEditing, handleInput, onContentChange, restoreSelection, saveSelection])
+  }, [content, isEditing, handleInput, onContentChange, restoreSelection, saveSelection, handleUndo, handleRedo, canUndo, canRedo, debouncedSync, selectedImage, activeTable])
 
   const toggleEditMode = useCallback(() => {
     // If we're exiting edit mode, sync the latest content first
