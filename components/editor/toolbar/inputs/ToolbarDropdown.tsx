@@ -48,6 +48,15 @@ const ToolbarDropdown: React.FC<ToolbarDropdownProps> = ({
   const selectedOption = options.find(opt => opt.value === (inputValue || value))
   const displayLabel = selectedOption ? selectedOption.label : (label || placeholder)
 
+  // Dynamic font size for long labels
+  const getLabelStyle = () => {
+    if (typeof displayLabel === 'string') {
+      if (displayLabel.length > 15) return 'text-[10px]'
+      if (displayLabel.length > 10) return 'text-xs'
+    }
+    return ''
+  }
+
   const handleSelect = (optionValue: string) => {
     if (onChange) {
       onChange(optionValue)
@@ -79,14 +88,18 @@ const ToolbarDropdown: React.FC<ToolbarDropdownProps> = ({
       style={{ width }}
     >
       {editable ? (
-        <div className={`
-          inline-flex items-center w-full rounded-md border border-gray-300 shadow-sm bg-white
-          ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}
-          ${isOpen ? 'ring-2 ring-offset-2 ring-blue-500' : ''}
-        `}>
+        <div 
+          className={`
+            inline-flex items-center w-full rounded-md
+            hover:bg-gray-100
+            ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+            ${isOpen ? 'bg-gray-100' : ''}
+          `}
+          style={{ height: '32px' }}
+        >
           <input
             type="text"
-            className="flex-1 min-w-0 px-3 py-1.5 text-sm font-medium text-gray-700 bg-transparent border-none focus:ring-0 focus:outline-none"
+            className="flex-1 min-w-0 px-1.5 text-sm font-medium text-gray-700 bg-transparent border-none focus:ring-0 focus:outline-none h-full"
             value={inputValue}
             onChange={handleInputChange}
             onKeyDown={handleInputKeyDown}
@@ -96,33 +109,34 @@ const ToolbarDropdown: React.FC<ToolbarDropdownProps> = ({
           />
           <button
             type="button"
-            className="px-2 py-1.5 hover:bg-gray-50 focus:outline-none"
+            className="px-1 hover:bg-gray-200 focus:outline-none rounded-sm mr-0.5"
             onClick={toggle}
             disabled={disabled}
             tabIndex={-1}
           >
-            <ChevronDownIcon size={14} className="h-4 w-4 text-gray-500" />
+            <ChevronDownIcon size={12} className="h-3 w-3 text-gray-500 opacity-70" />
           </button>
         </div>
       ) : (
         <button
           type="button"
           className={`
-            inline-flex justify-between items-center w-full rounded-md border border-gray-300 shadow-sm
-            px-3 py-1.5 bg-white text-sm font-medium text-gray-700
-            hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
-            ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}
-            ${isOpen ? 'ring-2 ring-offset-2 ring-blue-500' : ''}
+            inline-flex justify-between items-center w-full rounded-md
+            px-1.5 text-xs font-medium text-gray-700
+            hover:bg-gray-100 focus:outline-none
+            ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+            ${isOpen ? 'bg-gray-100' : ''}
           `}
+          style={{ height: '32px' }}
           onClick={toggle}
           disabled={disabled}
           aria-haspopup="true"
           aria-expanded={isOpen}
         >
-          <span className="truncate block flex-1 text-left">
+          <span className={`truncate block flex-1 text-left ${getLabelStyle()}`}>
             {displayLabel}
           </span>
-          <ChevronDownIcon size={14} className="ml-2 -mr-1 h-4 w-4" />
+          <ChevronDownIcon size={12} className="ml-1 h-3 w-3 text-gray-500 opacity-70" />
         </button>
       )}
 

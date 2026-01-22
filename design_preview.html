@@ -90,6 +90,7 @@
             font-size: 14px;
             font-weight: 500;
             margin: 0 2px;
+            position: relative; /* Added for dropdown positioning */
         }
 
         .tool-dropdown:hover {
@@ -106,6 +107,45 @@
             height: 12px;
             fill: currentColor;
             opacity: 0.7;
+        }
+
+        /* Dropdown Menu Styles */
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: white;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            z-index: 1000;
+            min-width: 150px;
+            padding: 6px 0;
+            margin-top: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            display: block;
+            width: 100%;
+            padding: 8px 16px;
+            text-align: left;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #3c4043;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .dropdown-item:hover {
+            background-color: #f1f3f4;
         }
 
         /* Specific adjustments */
@@ -149,17 +189,41 @@
 
         <!-- Group 2: Title, Font, Size -->
         <div class="toolbar-group">
-            <div class="tool-dropdown">
+            <div class="tool-dropdown" data-dropdown="heading">
                 <span>正文</span>
                 <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                <div class="dropdown-menu">
+                    <button class="dropdown-item" style="font-size: 14px; color: #3b82f6; font-weight: 500;">正文</button>
+                    <button class="dropdown-item" style="font-size: 26px; font-weight: bold; color: #000; line-height: 1.2;">标题 1</button>
+                    <button class="dropdown-item" style="font-size: 22px; font-weight: bold; color: #000; line-height: 1.2;">标题 2</button>
+                    <button class="dropdown-item" style="font-size: 18px; font-weight: bold; color: #000; line-height: 1.2;">标题 3</button>
+                    <button class="dropdown-item" style="font-size: 16px; font-weight: bold; color: #000; line-height: 1.2;">标题 4</button>
+                </div>
             </div>
-            <div class="tool-dropdown">
+            <div class="tool-dropdown" data-dropdown="font">
                 <span>字体</span>
                 <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                <div class="dropdown-menu">
+                    <button class="dropdown-item" style="font-family: Arial;">Arial</button>
+                    <button class="dropdown-item" style="font-family: 'Times New Roman';">Times New Roman</button>
+                    <button class="dropdown-item" style="font-family: Georgia;">Georgia</button>
+                    <button class="dropdown-item" style="font-family: 'Courier New';">Courier New</button>
+                    <button class="dropdown-item" style="font-family: Verdana;">Verdana</button>
+                </div>
             </div>
-            <div class="tool-dropdown">
+            <div class="tool-dropdown" data-dropdown="size">
                 <span>11</span>
                 <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                <div class="dropdown-menu" style="min-width: 60px;">
+                    <button class="dropdown-item">10</button>
+                    <button class="dropdown-item">11</button>
+                    <button class="dropdown-item">12</button>
+                    <button class="dropdown-item">14</button>
+                    <button class="dropdown-item">18</button>
+                    <button class="dropdown-item">24</button>
+                    <button class="dropdown-item">30</button>
+                    <button class="dropdown-item">36</button>
+                </div>
             </div>
         </div>
 
@@ -274,5 +338,49 @@
         </div>
     </div>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dropdowns = document.querySelectorAll('.tool-dropdown');
+
+            dropdowns.forEach(dropdown => {
+                // Toggle dropdown
+                dropdown.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    // Close all other dropdowns first
+                    dropdowns.forEach(d => {
+                        if (d !== dropdown) {
+                            d.querySelector('.dropdown-menu')?.classList.remove('show');
+                        }
+                    });
+                    
+                    const menu = this.querySelector('.dropdown-menu');
+                    if (menu) {
+                        menu.classList.toggle('show');
+                    }
+                });
+                
+                // Handle item selection
+                const items = dropdown.querySelectorAll('.dropdown-item');
+                items.forEach(item => {
+                    item.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        // Get the text from the clicked item
+                        const text = this.innerText;
+                        // Update the display span
+                        dropdown.querySelector('span').innerText = text;
+                        // Close the menu
+                        dropdown.querySelector('.dropdown-menu').classList.remove('show');
+                    });
+                });
+            });
+
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', function() {
+                dropdowns.forEach(dropdown => {
+                    dropdown.querySelector('.dropdown-menu')?.classList.remove('show');
+                });
+            });
+        });
+    </script>
 </body>
 </html>
