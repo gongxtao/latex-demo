@@ -216,6 +216,15 @@ export default function EditablePreview({
          // Remove contenteditable from all descendants
          const editables = body.querySelectorAll('[contenteditable]')
          editables.forEach(el => el.removeAttribute('contenteditable'))
+         const blocks = body.querySelectorAll('p,div,h1,h2,h3,h4,h5,h6,blockquote')
+         blocks.forEach(el => {
+           const text = el.textContent?.replace(/[\u00A0\u200B]/g, '').trim() || ''
+           const hasNonBrElement = Array.from(el.children).some(child => child.tagName !== 'BR')
+           const hasMeaningfulElement = el.querySelector('img,table,svg,video,iframe')
+           if (!text && !hasNonBrElement && !hasMeaningfulElement) {
+             el.remove()
+           }
+         })
        }
     }
     
@@ -522,6 +531,25 @@ export default function EditablePreview({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isEditing) return
 
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        e.stopPropagation()
+        const selection = iframeDoc.getSelection()
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0)
+          range.deleteContents()
+          const br = iframeDoc.createElement('br')
+          range.insertNode(br)
+          range.setStartAfter(br)
+          range.setEndAfter(br)
+          selection.removeAllRanges()
+          selection.addRange(range)
+          const newHtml = getCleanHtml(iframeDoc)
+          debouncedSync(newHtml)
+        }
+        return
+      }
+
       // Handle Undo/Redo
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault()
@@ -602,6 +630,9 @@ export default function EditablePreview({
         style.textContent = `
           html, body {
             min-height: 100%;
+          }
+          body p, body div, body h1, body h2, body h3, body h4, body h5, body h6, body blockquote {
+            margin: 0;
           }
           body[contenteditable="true"] {
             cursor: text;
