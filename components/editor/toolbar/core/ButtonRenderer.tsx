@@ -66,12 +66,13 @@ const ButtonRenderer: React.FC<ButtonRendererProps> = ({
   // Helper to get heading style for preview
   const getHeadingStyle = (tag: string) => {
     switch (tag) {
-      case 'h1': return { fontSize: '2em', fontWeight: 'bold', margin: 0 }
-      case 'h2': return { fontSize: '1.5em', fontWeight: 'bold', margin: 0 }
-      case 'h3': return { fontSize: '1.17em', fontWeight: 'bold', margin: 0 }
-      case 'h4': return { fontSize: '1em', fontWeight: 'bold', margin: 0 }
-      case 'h5': return { fontSize: '0.83em', fontWeight: 'bold', margin: 0 }
-      case 'h6': return { fontSize: '0.67em', fontWeight: 'bold', margin: 0 }
+      case 'p': return { fontSize: '14px', color: '#3b82f6', fontWeight: 500 }
+      case 'h1': return { fontSize: '26px', fontWeight: 'bold', color: '#000000', margin: 0, lineHeight: 1.2 }
+      case 'h2': return { fontSize: '22px', fontWeight: 'bold', color: '#000000', margin: 0, lineHeight: 1.2 }
+      case 'h3': return { fontSize: '18px', fontWeight: 'bold', color: '#000000', margin: 0, lineHeight: 1.2 }
+      case 'h4': return { fontSize: '16px', fontWeight: 'bold', color: '#000000', margin: 0, lineHeight: 1.2 }
+      case 'h5': return { fontSize: '14px', fontWeight: 'bold', color: '#000000', margin: 0, lineHeight: 1.2 }
+      case 'h6': return { fontSize: '12px', fontWeight: 'bold', color: '#000000', margin: 0, lineHeight: 1.2 }
       case 'code': return { fontFamily: 'monospace', backgroundColor: '#f5f5f5', padding: '2px 4px', borderRadius: '4px' }
       case 'blockquote': return { borderLeft: '4px solid #ccc', paddingLeft: '10px', color: '#666' }
       default: return {}
@@ -208,10 +209,7 @@ const ButtonRenderer: React.FC<ButtonRendererProps> = ({
             key={config.id}
             label={config.selectLabel}
             value={value}
-            options={config.options.map(opt => ({
-              ...opt,
-              style: getHeadingStyle(opt.value)
-            }))}
+            options={config.options}
             disabled={disabled}
             onChange={(val) => onSelectChange?.(config.id, val)}
             width={120}
