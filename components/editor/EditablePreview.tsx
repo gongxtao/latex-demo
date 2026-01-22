@@ -43,6 +43,7 @@ export default function EditablePreview({
   const [iframeBody, setIframeBody] = useState<HTMLElement | null>(null)
   const [activeTable, setActiveTable] = useState<HTMLTableElement | null>(null)
   const [selectedFloatingImageId, setSelectedFloatingImageId] = useState<string | null>(null)
+  const selectedFloatingImageIdRef = useRef<string | null>(null)
   const [iframeScroll, setIframeScroll] = useState({ x: 0, y: 0 })
   const previewContainerRef = useRef<HTMLDivElement>(null)
   
@@ -72,6 +73,10 @@ export default function EditablePreview({
   useEffect(() => {
     floatingImagesRef.current = floatingImages
   }, [floatingImages])
+
+  useEffect(() => {
+    selectedFloatingImageIdRef.current = selectedFloatingImageId
+  }, [selectedFloatingImageId])
 
   useEffect(() => {
     const iframe = iframeRef.current
@@ -119,6 +124,15 @@ export default function EditablePreview({
 
     return path
   }
+
+  const handleSelectFloatingImage = useCallback((id: string | null) => {
+    selectedFloatingImageIdRef.current = id
+    setSelectedFloatingImageId(id)
+    if (id) {
+      setSelectedImage(null)
+      setActiveTable(null)
+    }
+  }, [])
 
   // Helper function to get node from path
   const getNodeFromPath = (path: number[], root: Node): Node | null => {
@@ -230,9 +244,9 @@ export default function EditablePreview({
       onContentChange(nextState.html)
       lastSyncedContentRef.current = nextState.html
       onFloatingImagesChange(nextState.floatingImages)
-      setSelectedFloatingImageId(null)
+      handleSelectFloatingImage(null)
     }
-  }, [undo, onContentChange, debouncedSync, onFloatingImagesChange])
+  }, [undo, onContentChange, debouncedSync, onFloatingImagesChange, handleSelectFloatingImage])
 
   const handleRedo = useCallback(() => {
     debouncedSync.flush()
@@ -242,9 +256,9 @@ export default function EditablePreview({
       onContentChange(nextState.html)
       lastSyncedContentRef.current = nextState.html
       onFloatingImagesChange(nextState.floatingImages)
-      setSelectedFloatingImageId(null)
+      handleSelectFloatingImage(null)
     }
-  }, [redo, onContentChange, debouncedSync, onFloatingImagesChange])
+  }, [redo, onContentChange, debouncedSync, onFloatingImagesChange, handleSelectFloatingImage])
 
   // Image resize functionality moved to ImageResizer component
 
@@ -357,18 +371,25 @@ export default function EditablePreview({
     // Handle global mousedown for deselection (more reliable than click)
     const handleGlobalMouseDown = (e: MouseEvent) => {
       if (!isEditing) return
-      setSelectedFloatingImageId(null)
       
       let target = e.target as HTMLElement
-      // Handle text nodes
       if (target.nodeType === 3 && target.parentElement) {
         target = target.parentElement
+      }
+
+      const isFloatingLayerTarget = !!target.closest('[data-floating-layer="true"]')
+      if (isFloatingLayerTarget) {
+        setSelectedImage(null)
+        setActiveTable(null)
+        return
       }
       
       // Don't deselect if clicking on image or resizer handle
       if (target.tagName === 'IMG' || target.classList.contains('resizer-handle')) {
         return
       }
+
+      handleSelectFloatingImage(null)
       
       // If clicking inside a table, activate it immediately
       const table = target.closest('table')
@@ -386,12 +407,15 @@ export default function EditablePreview({
     
     // Handle mouseup as fallback for click (sometimes click is swallowed during editing)
     const handleMouseUp = (e: MouseEvent) => {
-       if (!isEditing) return
-       setSelectedFloatingImageId(null)
-       const target = e.target as HTMLElement
-       if (target.tagName === 'IMG') {
-         setSelectedImage(target as HTMLImageElement)
-       }
+      if (!isEditing) return
+      const target = e.target as HTMLElement
+      if (target.closest('[data-floating-layer="true"]')) {
+        return
+      }
+      handleSelectFloatingImage(null)
+      if (target.tagName === 'IMG') {
+        setSelectedImage(target as HTMLImageElement)
+      }
     }
 
     // Store reference for cleanup
@@ -520,6 +544,16 @@ export default function EditablePreview({
 
       // Check for Delete key
       if (e.key === 'Delete' || e.key === 'Backspace') {
+        const floatingId = selectedFloatingImageIdRef.current
+        if (floatingId) {
+          e.preventDefault()
+          e.stopPropagation()
+          const nextImages = floatingImagesRef.current.filter(image => image.id !== floatingId)
+          onFloatingImagesChange(nextImages)
+          handleSelectFloatingImage(null)
+          pushHistory({ html: lastSyncedContentRef.current, floatingImages: nextImages })
+          return
+        }
         if (selectedImage) {
           e.preventDefault()
           e.stopPropagation()
@@ -612,7 +646,7 @@ export default function EditablePreview({
         iframeDoc.body.contentEditable = 'false'
       }
     }
-  }, [content, isEditing, handleInput, onContentChange, restoreSelection, saveSelection, handleUndo, handleRedo, canUndo, canRedo, debouncedSync, selectedImage, activeTable])
+  }, [content, isEditing, handleInput, onContentChange, restoreSelection, saveSelection, handleUndo, handleRedo, canUndo, canRedo, debouncedSync, selectedImage, activeTable, selectedFloatingImageId, onFloatingImagesChange, pushHistory, handleSelectFloatingImage])
 
   const toggleEditMode = useCallback(() => {
     // If we're exiting edit mode, sync the latest content first
@@ -627,7 +661,7 @@ export default function EditablePreview({
       // Clear all selection states immediately
       setSelectedImage(null)
       setActiveTable(null)
-      setSelectedFloatingImageId(null)
+      handleSelectFloatingImage(null)
       // Clear iframe body to ensure Portals are unmounted
       setIframeBody(null)
     }
@@ -635,7 +669,7 @@ export default function EditablePreview({
     // Toggle state
     setIsEditing(prev => !prev)
     setPreviewKey(prev => prev + 1)
-  }, [isEditing, onContentChange])
+  }, [isEditing, onContentChange, handleSelectFloatingImage])
 
   const handleRefresh = () => {
     setPreviewKey(prev => prev + 1)
@@ -859,7 +893,7 @@ export default function EditablePreview({
           if (isEditing && e.target === e.currentTarget) {
             setSelectedImage(null)
             setActiveTable(null)
-            setSelectedFloatingImageId(null)
+            handleSelectFloatingImage(null)
           }
         }}
       >
@@ -872,7 +906,7 @@ export default function EditablePreview({
               if (isEditing && e.target === e.currentTarget) {
                 setSelectedImage(null)
                 setActiveTable(null)
-                setSelectedFloatingImageId(null)
+                handleSelectFloatingImage(null)
               }
             }}
           >
@@ -898,7 +932,7 @@ export default function EditablePreview({
                 onChange={onFloatingImagesChange}
                 isEditing={isEditing}
                 selectedId={selectedFloatingImageId}
-                onSelect={setSelectedFloatingImageId}
+                onSelect={handleSelectFloatingImage}
                 onCommit={handleFloatingImagesCommit}
                 scrollOffset={iframeScroll}
               />

@@ -292,6 +292,7 @@ export default function FloatingImageLayer({
   return (
     <div
       ref={layerRef}
+      data-floating-layer="true"
       style={{
         position: 'absolute',
         inset: 0,
