@@ -4,7 +4,7 @@
  * Handles format application, selection preservation, and change notification
  */
 
-import { useRef, RefObject } from 'react'
+import { useRef, RefObject, useState, useEffect } from 'react'
 import { applyStyle } from '../../utils/style'
 
 export interface UseEditorCommandsOptions {
@@ -22,6 +22,8 @@ export function useEditorCommands({
   isEditing
 }: UseEditorCommandsOptions) {
   const isUpdatingRef = useRef(false)
+  const [isFormatPainterActive, setIsFormatPainterActive] = useState(false)
+  const savedStylesRef = useRef<Record<string, any>>({})
 
   // Get the iframe document
   const getIframeDoc = () => {
@@ -98,14 +100,173 @@ export function useEditorCommands({
     }, 50)
   }
 
+  // Helper to apply line height to block
+  const applyLineHeight = (doc: Document, value: string) => {
+    const selection = doc.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+    
+    // Find parent block element
+    let node = selection.anchorNode
+    // If node is text node, get parent
+    if (node && node.nodeType === 3) {
+      node = node.parentNode
+    }
+    
+    // Traverse up to find a block element
+    while (node && node !== doc.body) {
+      const el = node as HTMLElement
+      const display = typeof window !== 'undefined' ? window.getComputedStyle(el).display : 'block'
+      
+      // Simple check for block elements or common text containers
+      if (['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'BLOCKQUOTE'].includes(el.nodeName) || display === 'block') {
+        el.style.lineHeight = value
+        break
+      }
+      node = node.parentNode
+    }
+  }
+
   // ============================================================================
   // Text Formatting Commands
   // ============================================================================
+
+  const captureStyles = (doc: Document) => {
+    const styles: Record<string, any> = {}
+    
+    // Query boolean states
+    const booleanStates = ['bold', 'italic', 'underline', 'strikeThrough', 'subscript', 'superscript', 'insertOrderedList', 'insertUnorderedList']
+    booleanStates.forEach(cmd => {
+      try {
+        styles[cmd] = doc.queryCommandState(cmd)
+      } catch (e) {
+        styles[cmd] = false
+      }
+    })
+
+    // Query value states
+    try {
+      styles.foreColor = doc.queryCommandValue('foreColor')
+      styles.backColor = doc.queryCommandValue('backColor') || doc.queryCommandValue('hiliteColor')
+      styles.fontName = doc.queryCommandValue('fontName')
+      styles.fontSize = doc.queryCommandValue('fontSize')
+      
+      // Query block states
+      if (doc.queryCommandState('justifyCenter')) styles.justify = 'justifyCenter'
+      else if (doc.queryCommandState('justifyRight')) styles.justify = 'justifyRight'
+      else if (doc.queryCommandState('justifyFull')) styles.justify = 'justifyFull'
+      else if (doc.queryCommandState('justifyLeft')) styles.justify = 'justifyLeft'
+    } catch (e) {
+      console.warn('Failed to query style values', e)
+    }
+
+    // Get computed styles for more accuracy
+    const selection = doc.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      const element = selection.anchorNode?.nodeType === 1 
+        ? selection.anchorNode as Element 
+        : selection.anchorNode?.parentElement
+
+      if (element) {
+        const win = doc.defaultView || window
+        const computed = win.getComputedStyle(element)
+        styles.computedColor = computed.color
+        styles.computedBackgroundColor = computed.backgroundColor
+        styles.computedFontFamily = computed.fontFamily
+        styles.computedFontSize = computed.fontSize
+        
+        // Block computed styles
+        // Find block parent for line height
+        let blockNode = element
+        while (blockNode && blockNode !== doc.body) {
+           const display = win.getComputedStyle(blockNode).display
+           if (display === 'block' || display === 'list-item') {
+             styles.computedLineHeight = win.getComputedStyle(blockNode).lineHeight
+             break
+           }
+           blockNode = blockNode.parentElement as Element
+        }
+      }
+    }
+
+    return styles
+  }
+
+  const applySavedStyles = (doc: Document) => {
+    const styles = savedStylesRef.current
+    if (!styles) return
+
+    applyFormat(doc => {
+      // Apply boolean states
+      const booleanStates = ['bold', 'italic', 'underline', 'strikeThrough', 'subscript', 'superscript', 'insertOrderedList', 'insertUnorderedList']
+      booleanStates.forEach(cmd => {
+        const currentState = doc.queryCommandState(cmd)
+        const targetState = styles[cmd]
+        if (currentState !== targetState) {
+          doc.execCommand(cmd)
+        }
+      })
+
+      // Apply justification
+      if (styles.justify) {
+         const currentJustify = 
+            doc.queryCommandState('justifyCenter') ? 'justifyCenter' :
+            doc.queryCommandState('justifyRight') ? 'justifyRight' :
+            doc.queryCommandState('justifyFull') ? 'justifyFull' : 'justifyLeft'
+         
+         if (currentJustify !== styles.justify) {
+            doc.execCommand(styles.justify)
+         }
+      }
+
+      // Apply values
+      if (styles.foreColor) doc.execCommand('foreColor', false, styles.foreColor)
+      
+      // Background color
+      if (styles.backColor && styles.backColor !== 'rgba(0, 0, 0, 0)' && styles.backColor !== 'transparent') {
+         if (doc.queryCommandSupported('hiliteColor')) {
+            doc.execCommand('hiliteColor', false, styles.backColor)
+         } else {
+            doc.execCommand('backColor', false, styles.backColor)
+         }
+      }
+      
+      // Font Name
+      if (styles.fontName) doc.execCommand('fontName', false, styles.fontName)
+      
+      // Font Size
+      if (styles.computedFontSize) {
+         applyStyle(doc, 'fontSize', styles.computedFontSize)
+      } else if (styles.fontSize) {
+         doc.execCommand('fontSize', false, styles.fontSize)
+      }
+
+      // Line Height
+      if (styles.computedLineHeight && styles.computedLineHeight !== 'normal') {
+         applyLineHeight(doc, styles.computedLineHeight)
+      }
+    })
+  }
 
   const commands = {
     // History
     undo: () => applyFormat(doc => doc.execCommand('undo')),
     redo: () => applyFormat(doc => doc.execCommand('redo')),
+    
+    // Format Painter
+    formatPainter: () => {
+      const doc = getIframeDoc()
+      if (!doc) return
+
+      if (isFormatPainterActive) {
+        // Deactivate
+        setIsFormatPainterActive(false)
+        savedStylesRef.current = {}
+      } else {
+        // Activate and capture
+        savedStylesRef.current = captureStyles(doc)
+        setIsFormatPainterActive(true)
+      }
+    },
 
     // Text format
     bold: () => applyFormat(doc => doc.execCommand('bold')),
@@ -210,8 +371,32 @@ export function useEditorCommands({
     }
   }
 
+  // Handle format painter auto-apply
+  useEffect(() => {
+    if (!isFormatPainterActive) return
+
+    const doc = getIframeDoc()
+    if (!doc) return
+
+    const handleMouseUp = () => {
+      const selection = doc.getSelection()
+      if (selection && !selection.isCollapsed) {
+        // Apply styles and deactivate
+        applySavedStyles(doc)
+        setIsFormatPainterActive(false)
+        savedStylesRef.current = {}
+      }
+    }
+
+    doc.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      doc.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isFormatPainterActive])
+
   return {
     commands,
+    isFormatPainterActive,
     isUpdating: isUpdatingRef.current,
     getIframeDoc
   }

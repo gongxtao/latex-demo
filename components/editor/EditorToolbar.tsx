@@ -43,7 +43,8 @@ import {
   UnderlineIcon,
   StrikeThroughIcon,
   FloatingImageIcon,
-  ImageIcon
+  ImageIcon,
+  FormatPainterIcon
 } from './icons'
 
 /**
@@ -92,7 +93,8 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
     'format-underline': UnderlineIcon,
     'format-strike': StrikeThroughIcon,
     'image': ImageIcon,
-    'floating-image': FloatingImageIcon
+    'floating-image': FloatingImageIcon,
+    'format-painter': FormatPainterIcon
   }
 
   /**
@@ -109,7 +111,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const disabled = propsDisabled || !isEditing
 
   // Use editor commands hook
-  const { commands } = useEditorCommands({
+  const { commands, isFormatPainterActive } = useEditorCommands({
     iframeRef,
     onContentChange,
     isEditing
@@ -138,6 +140,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
       case 'format-strike': return { isActive: editorState.isStrikeThrough }
       case 'subscript': return { isActive: editorState.isSubscript }
       case 'superscript': return { isActive: editorState.isSuperscript }
+      case 'format-painter': return { isActive: isFormatPainterActive }
       
       default: return { isActive: false }
     }

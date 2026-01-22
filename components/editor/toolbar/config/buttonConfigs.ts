@@ -20,7 +20,7 @@ export interface BaseButtonConfig {
 }
 
 export interface CommandButtonConfig extends BaseButtonConfig {
-  type: 'command'
+  type: 'command' | 'toggle'
   command: string
   commandArg?: string
   icon?: ComponentType<any>
@@ -56,6 +56,7 @@ export type ButtonConfig = CommandButtonConfig | ToggleButtonConfig | PickerButt
 export const HISTORY_BUTTONS: CommandButtonConfig[] = [
   { id: 'undo', type: 'command', command: 'undo', label: 'Undo', shortcut: 'Ctrl+Z' },
   { id: 'redo', type: 'command', command: 'redo', label: 'Redo', shortcut: 'Ctrl+Y' },
+  { id: 'format-painter', type: 'toggle', command: 'formatPainter', label: 'Format Painter' },
   { id: 'clear-format', type: 'command', command: 'removeFormat', label: 'Clear formatting', shortcut: 'Ctrl+Shift+N' }
 ]
 
