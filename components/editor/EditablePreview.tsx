@@ -688,6 +688,7 @@ export default function EditablePreview({
       ...floatingImagesRef.current,
       { id, src: imageUrl, x, y, width: baseWidth, height: baseHeight }
     ]
+    floatingImagesRef.current = nextImages
     onFloatingImagesChange(nextImages)
 
     const loader = new Image()
@@ -699,11 +700,12 @@ export default function EditablePreview({
       const containerRect = previewContainerRef.current?.getBoundingClientRect()
       const centeredX = containerRect ? Math.max(0, Math.round(containerRect.width / 2 - targetWidth / 2)) : x
       const centeredY = containerRect ? Math.max(0, Math.round(containerRect.height / 2 - targetHeight / 2)) : y
-      const resizedImages = floatingImagesRef.current.map(item =>
+      const resizedImages = nextImages.map(item =>
         item.id === id
           ? { ...item, width: targetWidth, height: targetHeight, x: centeredX, y: centeredY }
           : item
       )
+      floatingImagesRef.current = resizedImages
       onFloatingImagesChange(resizedImages)
       pushHistory({ html: lastSyncedContentRef.current, floatingImages: resizedImages })
     }
