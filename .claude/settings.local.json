@@ -4,7 +4,10 @@
       "Bash(npm run build:*)",
       "Bash(curl:*)",
       "WebSearch",
-      "Bash(npm run dev)"
+      "Bash(npm run dev)",
+      "Bash(wc:*)",
+      "Bash(dir:*)",
+      "Bash(npx jest:*)"
     ]
   }
 }
