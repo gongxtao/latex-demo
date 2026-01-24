@@ -7,17 +7,25 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "puppeteer browsers install chrome"
+    "postinstall": "puppeteer browsers install chrome",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:debug": "jest --runInBand",
+    "test:report": "bash test/generate-report.sh",
+    "test:report:open": "open test/report.html"
   },
   "dependencies": {
     "@codemirror/language": "^6.10.0",
     "@codemirror/legacy-modes": "^6.3.3",
     "@codemirror/state": "^6.4.1",
     "@codemirror/view": "^6.26.0",
+    "@types/html2pdf.js": "^0.10.0",
     "@types/lodash": "^4.17.23",
     "@uiw/react-codemirror": "^4.21.25",
     "@wangeditor/editor": "^5.1.23",
     "@wangeditor/editor-for-react": "^1.0.6",
+    "html2pdf.js": "^0.14.0",
     "lodash": "^4.17.21",
     "next": "^14.2.0",
     "puppeteer": "^24.28.0",
@@ -25,6 +33,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@next/swc-darwin-x64": "^16.1.4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
     "@types/jest": "^30.0.0",

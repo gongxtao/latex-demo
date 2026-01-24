@@ -225,7 +225,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   }
 
   return (
-    <div className="flex flex-col bg-gray-50 border-b border-gray-300">
+    <div className="flex flex-col">
       {/* Row 1: Core editing features */}
       <ToolbarRow id="toolbar-row-1" showBorder={false}>
         {/* History */}

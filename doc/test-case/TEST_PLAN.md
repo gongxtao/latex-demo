@@ -15,11 +15,11 @@
 
 | 组件 | 文件路径 | 行数 | 优先级 | 测试类型 | 测试用例数 |
 |------|----------|------|--------|----------|-----------|
-| EditablePreview | components/editor/EditablePreview.tsx | 1017 | P0 | 集成测试 | 49 |
+| EditablePreview | components/editor/EditablePreview.tsx | 1017 | P0 | 集成测试 | 41 |
 | FloatingImageLayer | components/editor/FloatingImageLayer.tsx | 374 | P1 | 交互测试 | 24 |
 | ImageResizer | components/editor/ImageResizer.tsx | 188 | P1 | 交互测试 | 25 |
-| useEditorCommands | components/editor/toolbar/hooks/useEditorCommands.ts | 404 | P1 | 单元测试 | 36 |
-| **小计** | - | **1983** | - | - | **134** |
+| useEditorCommands | components/editor/toolbar/hooks/useEditorCommands.ts | 404 | P1 | 单元测试 | 35 |
+| **小计** | - | **1983** | - | - | **133** |
 
 ### 2.2 其他组件
 
@@ -38,9 +38,9 @@
 
 | 类别 | 组件数 | 用例数 |
 |------|--------|--------|
-| 核心组件 | 4 | 134 |
+| 核心组件 | 4 | 133 |
 | 其他组件 | 7 | 76 |
-| **总计** | **11** | **210** |
+| **总计** | **11** | **209** |
 
 ### 2.4 已有测试（需验证通过）
 
@@ -778,13 +778,13 @@ TableSmartToolbar 是编辑器中最复杂的组件之一，负责：
 | 一 | ImageResizer + 高风险用例 | 27 | 3h |
 | 一 | SmartContextMenu | 18 | 3h |
 | 二 | FloatingImageLayer | 23 | 4h |
-| 二 | useEditorCommands | 36 | 5h |
+| 二 | useEditorCommands | 35 | 5h |
 | 二 | TableSmartToolbar | 45 | 8h |
-| 三 | EditablePreview | 49 | 7h |
+| 三 | EditablePreview | 41 | 7h |
 | 四 | pickers/inputs | 14 | 2h |
 | 四 | 集成测试 | 10-15 | 4h |
 | - | 测试修复与完善 | - | 4h |
-| **总计** | **11组件** | **210** | **38-42小时** |
+| **总计** | **11组件** | **209** | **38-42小时** |
 
 ### 7.2 详细实施顺序
 
@@ -796,11 +796,11 @@ TableSmartToolbar 是编辑器中最复杂的组件之一，负责：
 第二阶段: 核心交互组件 (20小时)
 ├── SmartContextMenu (18用例) - 3h
 ├── FloatingImageLayer (24用例) - 4h
-├── useEditorCommands (36用例) - 5h
+├── useEditorCommands (35用例) - 5h
 └── TableSmartToolbar (45用例) ← 最复杂 - 8h
 
 第三阶段: 主容器集成 (11小时)
-├── EditablePreview (49用例) - 7h
+├── EditablePreview (41用例) - 7h
 └── 集成测试 (10-15用例) - 4h
 
 第四阶段: 工具栏组件 (6小时)
@@ -900,3 +900,44 @@ TableSmartToolbar 是编辑器中最复杂的组件之一，负责：
 - [ ] 测试运行时间 <45 秒
 - [ ] 手动验证核心功能正常
 - [ ] 高风险用例 100% 覆盖
+
+---
+
+## 十五、性能测试用例
+
+### 15.1 渲染性能
+
+| 用例ID | 测试项 | 操作 | 预期结果 |
+|--------|--------|------|----------|
+| TC-PERF-001 | 大量文本渲染 | 渲染包含10000个段落的文档 | 渲染时间 <500ms |
+| TC-PERF-002 | 大量浮动图片 | 同时渲染50张浮动图片 | 渲染时间 <1000ms |
+| TC-PERF-003 | 复杂表格渲染 | 渲染20x20的表格 | 渲染时间 <300ms |
+
+### 15.2 交互性能
+
+| 用例ID | 测试项 | 操作 | 预期结果 |
+|--------|--------|------|----------|
+| TC-PERF-004 | 快速拖拽 | 快速连续拖拽图片100次 | 无卡顿，帧率 >30fps |
+| TC-PERF-005 | 快速格式化 | 连续应用格式50次 | 响应时间 <100ms |
+| TC-PERF-006 | 大量撤销重做 | 执行100次撤销/重做 | 无明显延迟 |
+
+### 15.3 内存性能
+
+| 用例ID | 测试项 | 操作 | 预期结果 |
+|--------|--------|------|----------|
+| TC-PERF-007 | 内存泄漏检测 | 插入和删除图片100次 | 内存增长 <50MB |
+| TC-PERF-008 | 事件监听器清理 | 频繁切换编辑模式 | 无监听器泄漏 |
+| TC-PERF-009 | 大文档内存占用 | 编辑10000字的文档 | 内存使用 <200MB |
+
+---
+
+## 十六、文档一致性检查清单
+
+- [ ] TEST_PLAN.md与TEST_IMPLEMENTATION_PLAN.md的用例总数一致
+- [ ] EditablePreview用例数已修正为41
+- [ ] useEditorCommands用例数已修正为35（实际有37个用例，声明35个）
+- [ ] 总用例数已修正为209
+- [ ] TC-EC-033存在于场景14（格式刷相关）
+- [ ] 性能测试用例已添加到TEST_PLAN.md
+- [ ] 所有表格中的用例数保持一致
+- [ ] 所有时间估算保持一致

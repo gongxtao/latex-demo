@@ -69,25 +69,25 @@ describe('EditorToolbar Integration', () => {
 
   it('renders all toolbar groups', () => {
     render(<EditorToolbar {...defaultProps} />)
-    
-    // Check for key buttons from different groups
+
+    // Check for key buttons from different groups using correct button IDs
     expect(screen.getByTestId('btn-undo')).toBeInTheDocument()
-    expect(screen.getByTestId('btn-bold')).toBeInTheDocument()
+    expect(screen.getByTestId('btn-format-bold')).toBeInTheDocument()
     expect(screen.getByTestId('btn-font-family')).toBeInTheDocument()
     expect(screen.getByTestId('btn-align-left')).toBeInTheDocument()
   })
 
   it('reflects editor state in buttons', () => {
     render(<EditorToolbar {...defaultProps} />)
-    
+
     // Bold should be active (mocked state isBold: true)
-    const boldBtn = screen.getByTestId('btn-bold')
+    const boldBtn = screen.getByTestId('btn-format-bold')
     expect(boldBtn).toHaveAttribute('data-active', 'true')
-    
+
     // Italic should not be active
-    const italicBtn = screen.getByTestId('btn-italic')
+    const italicBtn = screen.getByTestId('btn-format-italic')
     expect(italicBtn).toHaveAttribute('data-active', 'false')
-    
+
     // Font family should show current value
     const fontBtn = screen.getByTestId('btn-font-family')
     expect(fontBtn).toHaveAttribute('data-value', 'Arial')
@@ -95,11 +95,11 @@ describe('EditorToolbar Integration', () => {
 
   it('executes commands when buttons are clicked', () => {
     render(<EditorToolbar {...defaultProps} />)
-    
+
     // Click bold
-    fireEvent.click(screen.getByTestId('btn-bold'))
+    fireEvent.click(screen.getByTestId('btn-format-bold'))
     expect(mockCommands.bold).toHaveBeenCalled()
-    
+
     // Click font family (mock simulates selecting 'new-value')
     fireEvent.click(screen.getByTestId('btn-font-family'))
     expect(mockCommands.fontFamily).toHaveBeenCalledWith('new-value')
@@ -111,9 +111,9 @@ describe('EditorToolbar Integration', () => {
     // But since we mocked ButtonRenderer, we can check if it received disabled prop
     // However, the test-renderer doesn't easily expose props of mocked components
     // So we rely on the fact that EditorToolbar passes `disabled={!isEditing}`
-    
+
     const { rerender } = render(<EditorToolbar {...defaultProps} isEditing={false} />)
-    
+
     // In a real integration test with full rendering, we would check the disabled attribute
     // Here we trust the prop passing logic which is simple: disabled = props.disabled || !isEditing
   })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import debounce from 'lodash/debounce'
 import EditorToolbar from './EditorToolbar'
@@ -18,6 +18,10 @@ interface EditablePreviewProps {
   floatingImages: FloatingImageItem[]
   onFloatingImagesChange: (images: FloatingImageItem[]) => void
   isGenerating?: boolean
+  initialEditing?: boolean
+  hideControls?: boolean
+  hideToolbar?: boolean
+  iframeRef?: RefObject<HTMLIFrameElement>
 }
 
 export default function EditablePreview({
@@ -26,10 +30,16 @@ export default function EditablePreview({
   onContentChange,
   floatingImages,
   onFloatingImagesChange,
-  isGenerating = false
+  isGenerating = false,
+  initialEditing = false,
+  hideControls = false,
+  hideToolbar = false,
+  iframeRef: externalIframeRef
 }: EditablePreviewProps) {
-  const [isEditing, setIsEditing] = useState(false)
-  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const [isEditing, setIsEditing] = useState(initialEditing)
+  const internalIframeRef = useRef<HTMLIFrameElement>(null)
+  // Use external ref if provided, otherwise use internal ref
+  const iframeRef = (externalIframeRef || internalIframeRef) as RefObject<HTMLIFrameElement>
   const [previewKey, setPreviewKey] = useState(0)
   const scrollPositionRef = useRef({ x: 0, y: 0 })
   const isInitialLoadRef = useRef(true)
@@ -527,6 +537,66 @@ export default function EditablePreview({
     // Add paste event listener
     iframeDoc.addEventListener('paste', handlePaste)
 
+    // Helper function to check if cursor is at the end of a line
+    const isAtLineEnd = (range: Range): boolean => {
+      const endContainer = range.endContainer
+      const endOffset = range.endOffset
+
+      // If we're in a text node
+      if (endContainer.nodeType === Node.TEXT_NODE) {
+        const textNode = endContainer as Text
+        // Check if we're at the end of the text node
+        if (endOffset < textNode.length) {
+          return false // Not at end of text node
+        }
+        // Check if there's more content after this text node in the parent
+        const parent = endContainer.parentNode
+        if (parent && parent.nextSibling) {
+          // Check if next sibling has meaningful content
+          let nextSibling = parent.nextSibling
+          while (nextSibling) {
+            if (nextSibling.nodeType === Node.TEXT_NODE) {
+              const text = (nextSibling as Text).textContent?.trim()
+              if (text && text.length > 0) {
+                return false // Has more text content
+              }
+            } else if (nextSibling.nodeType === Node.ELEMENT_NODE) {
+              const element = nextSibling as Element
+              // Ignore BR elements
+              if (element.tagName !== 'BR') {
+                return false // Has more element content
+              }
+            }
+            nextSibling = nextSibling.nextSibling
+          }
+        }
+        return true // At end of text content
+      }
+
+      // If we're in an element node
+      if (endContainer.nodeType === Node.ELEMENT_NODE) {
+        const element = endContainer as Element
+        // Check if there are child nodes after the cursor
+        const childNodes = Array.from(element.childNodes)
+        for (let i = endOffset; i < childNodes.length; i++) {
+          const child = childNodes[i]
+          if (child.nodeType === Node.TEXT_NODE) {
+            const text = (child as Text).textContent?.trim()
+            if (text && text.length > 0) {
+              return false
+            }
+          } else if (child.nodeType === Node.ELEMENT_NODE) {
+            if ((child as Element).tagName !== 'BR') {
+              return false
+            }
+          }
+        }
+        return true // No more content after cursor
+      }
+
+      return false
+    }
+
     // Add keydown event handler for Delete key
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isEditing) return
@@ -538,10 +608,26 @@ export default function EditablePreview({
         if (selection && selection.rangeCount > 0) {
           const range = selection.getRangeAt(0)
           range.deleteContents()
-          const br = iframeDoc.createElement('br')
-          range.insertNode(br)
-          range.setStartAfter(br)
-          range.setEndAfter(br)
+
+          // Check if cursor is at line end
+          const atLineEnd = isAtLineEnd(range)
+
+          if (atLineEnd) {
+            // At line end: insert two <br> elements
+            const br1 = iframeDoc.createElement('br')
+            const br2 = iframeDoc.createElement('br')
+            range.insertNode(br1)
+            br1.parentNode?.insertBefore(br2, br1.nextSibling)
+            range.setStartAfter(br2)
+            range.setEndAfter(br2)
+          } else {
+            // In middle of line: insert single <br>
+            const br = iframeDoc.createElement('br')
+            range.insertNode(br)
+            range.setStartAfter(br)
+            range.setEndAfter(br)
+          }
+
           selection.removeAllRanges()
           selection.addRange(range)
           const newHtml = getCleanHtml(iframeDoc)
@@ -870,53 +956,57 @@ export default function EditablePreview({
 
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between bg-gray-50 border-b border-gray-300 px-4 py-2">
-        <div className="text-sm font-medium text-gray-700">
-          {selectedFile ? (
-            <>
-              <span>Editing: {selectedFile.split('/').pop()?.replace('.html', '')}</span>
-              {isEditing && (
-                <span className="ml-3 text-green-600 font-semibold">
-                  ✏️ Edit Mode Active - Click anywhere to edit
-                </span>
-              )}
-            </>
-          ) : (
-            'Please select an HTML file'
-          )}
+      {/* Control Buttons - only show if not hidden */}
+      {!hideControls && (
+        <div className="flex items-center justify-between bg-gray-50 border-b border-gray-300 px-4 py-2">
+          <div className="text-sm font-medium text-gray-700">
+            {selectedFile ? (
+              <>
+                <span>Editing: {selectedFile.split('/').pop()?.replace('.html', '')}</span>
+                {isEditing && (
+                  <span className="ml-3 text-green-600 font-semibold">
+                    ✏️ Edit Mode Active - Click anywhere to edit
+                  </span>
+                )}
+              </>
+            ) : (
+              'Please select an HTML file'
+            )}
+          </div>
+        <div className="flex space-x-2">
+          <button
+            onClick={toggleEditMode}
+            disabled={!selectedFile}
+            className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+              isEditing
+                ? 'bg-green-500 text-white hover:bg-green-600'
+                : 'bg-blue-500 text-white hover:bg-blue-600'
+            } disabled:bg-gray-300 disabled:cursor-not-allowed`}
+          >
+            {isEditing ? '🔒 Lock Preview' : '✏️ Enable Editing'}
+          </button>
+          <button
+            onClick={handleRefresh}
+            disabled={!selectedFile}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
+            title="Refresh Preview"
+          >
+            🔄 Refresh
+          </button>
         </div>
-      <div className="flex space-x-2">
-        <button
-          onClick={toggleEditMode}
-          disabled={!selectedFile}
-          className={`px-4 py-2 rounded-lg transition-colors font-medium ${
-            isEditing
-              ? 'bg-green-500 text-white hover:bg-green-600'
-              : 'bg-blue-500 text-white hover:bg-blue-600'
-          } disabled:bg-gray-300 disabled:cursor-not-allowed`}
-        >
-          {isEditing ? '🔒 Lock Preview' : '✏️ Enable Editing'}
-        </button>
-        <button
-          onClick={handleRefresh}
-          disabled={!selectedFile}
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
-          title="Refresh Preview"
-        >
-          🔄 Refresh
-        </button>
       </div>
-    </div>
+      )}
 
-      {/* EditorToolbar with minimal props */}
-      <EditorToolbar
-        iframeRef={iframeRef}
-        onContentChange={debouncedSync}
-        isEditing={!!selectedFile && isEditing}
-        disabled={!selectedFile}
-        onFloatingImageInsert={handleInsertFloatingImage}
-      />
+      {/* EditorToolbar - only show if not hidden */}
+      {!hideToolbar && (
+        <EditorToolbar
+          iframeRef={iframeRef}
+          onContentChange={debouncedSync}
+          isEditing={!!selectedFile && isEditing}
+          disabled={!selectedFile}
+          onFloatingImageInsert={handleInsertFloatingImage}
+        />
+      )}
 
       {/* Editable Preview Area */}
       <div 
@@ -1000,17 +1090,6 @@ export default function EditablePreview({
           </div>
         )}
       </div>
-
-      {/* Editing Tips */}
-      {isEditing && selectedFile && (
-        <div className="bg-blue-50 border-t border-blue-200 px-4 py-2">
-          <p className="text-sm text-blue-800">
-            💡 <strong>Tip:</strong> Click anywhere in the preview to edit text directly.
-            Use the toolbar to format text, add links, images, and tables.
-            Click &quot;Lock Preview&quot; when done editing, then save your changes.
-          </p>
-        </div>
-      )}
     </div>
   )
 }

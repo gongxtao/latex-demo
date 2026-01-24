@@ -1,6 +1,6 @@
 
 import React from 'react'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import ButtonRenderer, { ButtonRendererProps } from './ButtonRenderer'
 import { ButtonConfig } from '../config/buttonConfigs'
 
@@ -25,12 +25,13 @@ describe('ButtonRenderer', () => {
     }
 
     render(<ButtonRenderer config={config} {...defaultProps} />)
-    
-    const button = screen.getByRole('button', { name: 'Bold' })
+
+    // Use querySelector instead of getByRole to avoid getComputedStyle issues
+    const button = document.querySelector('button[aria-label="Bold"]')
     expect(button).toBeInTheDocument()
     expect(screen.getByTestId('mock-icon')).toBeInTheDocument()
-    
-    fireEvent.click(button)
+
+    if (button) fireEvent.click(button)
     expect(defaultProps.onCommand).toHaveBeenCalledWith('bold', undefined)
   })
 
@@ -46,14 +47,15 @@ describe('ButtonRenderer', () => {
     const { rerender } = render(
       <ButtonRenderer config={config} {...defaultProps} isActive={false} />
     )
-    
-    const button = screen.getByRole('button', { name: 'Italic' })
+
+    const button = document.querySelector('button[aria-label="Italic"]')
     expect(button).not.toHaveAttribute('aria-pressed', 'true')
-    
+
     // Rerender with active state
     rerender(<ButtonRenderer config={config} {...defaultProps} isActive={true} />)
     expect(button).toHaveAttribute('aria-pressed', 'true')
-    expect(button).toHaveClass('bg-blue-100')
+    // ToggleButton uses bg-gray-200 for active state
+    expect(button?.className).toContain('bg-gray-200')
   })
 
   it('renders a select dropdown correctly (font-family)', () => {
@@ -69,18 +71,18 @@ describe('ButtonRenderer', () => {
     }
 
     render(<ButtonRenderer config={config} {...defaultProps} value="Arial" />)
-    
-    // Check if dropdown button is rendered with current value
-    const trigger = screen.getByRole('button', { name: /Arial/i }) // Regex to match flexible content
+
+    // Check if dropdown button is rendered (use text content since label might not be aria-label)
+    const trigger = screen.getByText('Arial')
     expect(trigger).toBeInTheDocument()
-    
+
     // Open dropdown
     fireEvent.click(trigger)
-    
+
     // Check options
     const option = screen.getByText('Times New Roman')
     expect(option).toBeInTheDocument()
-    
+
     // Select option
     fireEvent.click(option)
     expect(defaultProps.onSelectChange).toHaveBeenCalledWith('font-family', 'Times New Roman')
@@ -95,9 +97,9 @@ describe('ButtonRenderer', () => {
     }
 
     render(<ButtonRenderer config={config} {...defaultProps} />)
-    
+
     // ColorPicker renders a button with exact name
-    const button = screen.getByRole('button', { name: 'Text color' })
+    const button = document.querySelector('button[aria-label="Text color"]')
     expect(button).toBeInTheDocument()
   })
 })

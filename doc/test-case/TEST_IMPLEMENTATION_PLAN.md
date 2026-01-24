@@ -231,6 +231,23 @@ export class MockResizeObserver implements ResizeObserver {
       } as ResizeObserverEntry], this)
     })
   }
+
+  // 异步触发回调（模拟真实行为）
+  async triggerAsync() {
+    await new Promise(resolve => setTimeout(resolve, 0))
+    this.trigger()
+  }
+
+  // 触发特定目标的回调
+  triggerTarget(target: Element) {
+    const rect = target.getBoundingClientRect()
+    this.callback([{
+      target,
+      contentRect: rect,
+      borderBoxSize: [{ inlineSize: rect.width, blockSize: rect.height }],
+      contentBoxSize: [{ inlineSize: rect.width, blockSize: rect.height }],
+    } as ResizeObserverEntry], this)
+  }
 }
 
 // 在全局设置中应用
@@ -271,6 +288,27 @@ export class MockMutationObserver implements MutationObserver {
   triggerMutations(mutations: MutationRecord[]) {
     this.records.push(...mutations)
     this.callback(mutations, this)
+  }
+
+  // 异步触发突变（模拟真实行为）
+  async triggerMutationsAsync(mutations: MutationRecord[]) {
+    await new Promise(resolve => setTimeout(resolve, 0))
+    this.triggerMutations(mutations)
+  }
+
+  // 创建模拟的MutationRecord
+  createMockMutation(type: string, target: Node): MutationRecord {
+    return {
+      type,
+      target,
+      addedNodes: [],
+      removedNodes: [],
+      attributeName: null,
+      attributeNamespace: null,
+      nextSibling: null,
+      oldValue: null,
+      previousSibling: null,
+    } as MutationRecord
   }
 }
 
@@ -513,10 +551,31 @@ afterEach(() => {
 
 3. **集成测试** (4h)
    - IT-001: 完整编辑流程
+     - 进入编辑模式
+     - 输入文本并格式化
+     - 保存并退出编辑模式
+     - 刷新页面验证内容保持
    - IT-002: 表格完整操作
+     - 插入3x4表格
+     - 输入单元格内容
+     - 合并单元格
+     - 调整行高列宽
+     - 删除表格
    - IT-003: 浮动图片完整操作
+     - 粘贴图片插入
+     - 拖拽调整位置
+     - 调整大小
+     - 删除图片
    - IT-004: 格式刷完整流程
+     - 选中带格式的文本
+     - 激活格式刷
+     - 选择其他文本应用格式
+     - 验证格式应用成功
    - IT-005: 撤销重做完整流程
+     - 执行多个编辑操作
+     - 撤销所有操作
+     - 重做所有操作
+     - 验证每一步状态正确
 
 ---
 
@@ -618,6 +677,44 @@ it('TC-XXX-001: 拖拽调整大小', async () => {
 })
 ```
 
+### 5.4 快照测试模板
+
+```typescript
+/**
+ * 快照测试示例
+ */
+
+import { render } from '@testing-library/react'
+import { ComponentName } from './ComponentName'
+
+describe('ComponentName Snapshots', () => {
+  it('TC-XXX-001: 渲染快照匹配', () => {
+    const { container } = render(<ComponentName prop="value" />)
+    expect(container.firstChild).toMatchSnapshot()
+  })
+
+  it('TC-XXX-002: 不同props的快照', () => {
+    const { container } = render(<ComponentName variant="primary" />)
+    expect(container.firstChild).toMatchSnapshot()
+  })
+
+  it('TC-XXX-003: 交互后快照', () => {
+    const { container } = render(<ComponentName />)
+    fireEvent.click(screen.getByRole('button'))
+    expect(container.firstChild).toMatchSnapshot()
+  })
+
+  it('TC-XXX-004: 内联快照测试', () => {
+    const { container } = render(<ComponentName />)
+    expect(container.innerHTML).toMatchInlineSnapshot(`
+      <div>
+        <button>Click me</button>
+      </div>
+    `)
+  })
+})
+```
+
 ---
 
 ## 六、Mock策略详解
@@ -702,5 +799,20 @@ test/__mocks__/
 5. **持续验证** - 每个阶段完成后运行测试，确保质量
 
 **预计总时间**: 38-42 小时
-**测试用例总数**: 199
+**测试用例总数**: 209
 **预计覆盖率**: 75%-85%
+
+---
+
+## 十、文档一致性检查清单
+
+- [ ] TEST_IMPLEMENTATION_PLAN.md与TEST_PLAN.md的用例总数一致（209）
+- [ ] EditablePreview用例数已修正为41
+- [ ] useEditorCommands用例数已修正为35
+- [ ] ResizeObserver Mock添加了异步触发方法
+- [ ] MutationObserver Mock添加了异步触发方法
+- [ ] 添加了快照测试模板和示例
+- [ ] 集成测试添加了详细的操作步骤
+- [ ] 所有表格中的用例数保持一致
+- [ ] 所有时间估算保持合理且一致
+- [ ] Mock实现完整，包含triggerAsync等高级方法

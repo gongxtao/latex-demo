@@ -15,8 +15,19 @@ describe('useEditorState', () => {
       queryCommandValue: jest.fn().mockReturnValue(''),
       getSelection: jest.fn().mockReturnValue({
         anchorNode: document.createElement('div'),
+        focusNode: document.createElement('div'),
         rangeCount: 1,
-        isCollapsed: false
+        isCollapsed: false,
+        getRangeAt: jest.fn(() => ({
+          startContainer: document.createElement('div'),
+          startOffset: 0,
+          endContainer: document.createElement('div'),
+          endOffset: 0,
+          collapsed: false,
+          commonAncestorContainer: document.body,
+        })),
+        removeAllRanges: jest.fn(),
+        addRange: jest.fn(),
       }),
       addEventListener: jest.fn(),
       removeEventListener: jest.fn(),

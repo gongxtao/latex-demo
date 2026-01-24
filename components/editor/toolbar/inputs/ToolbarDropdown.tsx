@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useDropdownState } from '../hooks/useDropdownState'
 import { ChevronDownIcon } from '../../icons'
 
@@ -37,6 +38,7 @@ const ToolbarDropdown: React.FC<ToolbarDropdownProps> = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const { isOpen, toggle, close, open } = useDropdownState({ containerRef })
   const [inputValue, setInputValue] = useState(value || '')
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 })
 
   // Update input value when prop value changes
   useEffect(() => {
@@ -44,6 +46,17 @@ const ToolbarDropdown: React.FC<ToolbarDropdownProps> = ({
       setInputValue(value)
     }
   }, [value])
+
+  // Calculate dropdown position when it opens
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX
+      })
+    }
+  }, [isOpen])
 
   const selectedOption = options.find(opt => opt.value === (inputValue || value))
   const displayLabel = selectedOption ? selectedOption.label : (label || placeholder)
@@ -81,14 +94,46 @@ const ToolbarDropdown: React.FC<ToolbarDropdownProps> = ({
     }
   }
 
+  const dropdownContent = (
+    <div
+      className="origin-top-right absolute rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-[9999] max-h-60 overflow-y-auto"
+      style={{
+        top: `${dropdownPosition.top}px`,
+        left: `${dropdownPosition.left}px`,
+        minWidth: typeof width === 'number' ? `${Math.max(width, 100)}px` : width
+      }}
+      role="menu"
+      aria-orientation="vertical"
+    >
+      <div className="py-1" role="none">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            className={`
+              block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 whitespace-nowrap
+              ${option.value === value ? 'bg-gray-100 font-medium' : ''}
+              ${option.disabled ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
+            role="menuitem"
+            disabled={option.disabled}
+            onClick={() => !option.disabled && handleSelect(option.value)}
+            style={option.style}
+          >
+            {renderItem ? renderItem(option) : option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+
   return (
-    <div 
+    <div
       ref={containerRef}
       className={`relative inline-block text-left ${className}`}
       style={{ width }}
     >
       {editable ? (
-        <div 
+        <div
           className={`
             inline-flex items-center w-full rounded-md
             hover:bg-gray-100
@@ -140,31 +185,9 @@ const ToolbarDropdown: React.FC<ToolbarDropdownProps> = ({
         </button>
       )}
 
-      {isOpen && !disabled && (
-        <div 
-          className="origin-top-right absolute left-0 mt-1 min-w-full w-max rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50 max-h-60 overflow-y-auto"
-          role="menu"
-          aria-orientation="vertical"
-        >
-          <div className="py-1" role="none">
-            {options.map((option) => (
-              <button
-                key={option.value}
-                className={`
-                  block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900
-                  ${option.value === value ? 'bg-gray-100 font-medium' : ''}
-                  ${option.disabled ? 'opacity-50 cursor-not-allowed' : ''}
-                `}
-                role="menuitem"
-                disabled={option.disabled}
-                onClick={() => !option.disabled && handleSelect(option.value)}
-                style={option.style}
-              >
-                {renderItem ? renderItem(option) : option.label}
-              </button>
-            ))}
-          </div>
-        </div>
+      {isOpen && !disabled && typeof document !== 'undefined' && createPortal(
+        dropdownContent,
+        document.body
       )}
     </div>
   )

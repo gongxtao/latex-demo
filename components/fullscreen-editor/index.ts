@@ -1,0 +1,5 @@
+export { default as EditorPage } from './EditorPage'
+export { default as EditorHeader } from './EditorHeader'
+export { default as TemplateModal } from './TemplateModal'
+export { useEditorStorage } from './useEditorStorage'
+export type { FloatingImageItem } from './useEditorStorage'
