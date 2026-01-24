@@ -106,6 +106,28 @@ export default function EditorPage() {
     const originalOutline = body.style.outline
     body.style.outline = 'none'
 
+    // Temporarily insert floating images into iframe for printing
+    const tempFloatingImages: HTMLDivElement[] = []
+
+    floatingImages.forEach(image => {
+      const imgContainer = iframeDoc.createElement('div')
+      imgContainer.style.position = 'absolute'
+      imgContainer.style.left = `${image.x}px`
+      imgContainer.style.top = `${image.y}px`
+      imgContainer.style.width = `${image.width}px`
+      imgContainer.style.height = `${image.height}px`
+
+      const img = iframeDoc.createElement('img')
+      img.src = image.src
+      img.style.width = '100%'
+      img.style.height = '100%'
+      img.style.display = 'block'
+
+      imgContainer.appendChild(img)
+      body.appendChild(imgContainer)
+      tempFloatingImages.push(imgContainer)
+    })
+
     // Add or update print-specific styles
     let printStyle = iframeDoc.getElementById('print-export-styles')
     if (!printStyle) {
@@ -161,13 +183,16 @@ export default function EditorPage() {
         }
         body.style.outline = originalOutline
 
+        // Remove temporary floating images
+        tempFloatingImages.forEach(el => el.remove())
+
         // Remove temporary print styles
         if (printStyle && printStyle.parentNode) {
           printStyle.parentNode.removeChild(printStyle)
         }
       }, 100)
     }
-  }, [getIframe])
+  }, [getIframe, floatingImages])
 
   const handleNewDocument = useCallback(() => {
     if (confirm('确定要新建空白文档吗？当前内容将被清空。')) {

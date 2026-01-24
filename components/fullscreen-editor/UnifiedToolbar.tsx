@@ -66,11 +66,11 @@ export default function UnifiedToolbar({
   const getSaveStatusText = () => {
     switch (saveStatus) {
       case 'saving':
-        return '保存中...'
+        return 'Saving...'
       case 'saved':
-        return '已保存'
+        return 'Saved'
       case 'unsaved':
-        return '未保存'
+        return 'Unsaved'
       default:
         return ''
     }
@@ -111,7 +111,7 @@ export default function UnifiedToolbar({
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          新建空白文档
+          New Blank Document
         </button>
         <button
           onClick={(e) => {
@@ -125,7 +125,7 @@ export default function UnifiedToolbar({
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          选择模板...
+          Select Template...
         </button>
         <hr className="my-1 border-gray-200" />
         <button
@@ -146,7 +146,7 @@ export default function UnifiedToolbar({
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
           </svg>
-          复制 HTML
+          Copy HTML
         </button>
         <button
           onClick={(e) => {
@@ -166,7 +166,7 @@ export default function UnifiedToolbar({
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          导出 PDF
+          Export PDF
         </button>
       </div>
     </div>
@@ -188,7 +188,7 @@ export default function UnifiedToolbar({
             onClick={handleFileMenuClick}
             className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded flex items-center gap-1"
           >
-            <span>文件</span>
+            <span>File</span>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
