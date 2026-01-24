@@ -1,240 +1,247 @@
-# AI Resume Editor - WYSIWYG HTML Editor
+# HTML Resume Editor - Full-Featured WYSIWYG Editor
 
-An AI-powered resume editor with **What You See Is What You Get** editing experience. Edit resumes directly in the preview window, just like using Microsoft Word.
+A powerful, feature-rich HTML resume editor with an intuitive **What You See Is What You Get** editing experience. Edit resumes directly in the browser with professional formatting, floating images, table editing, and more.
 
 ## ✨ Key Features
 
-### 1. 📁 Template Browser
-- Top navigation with categorized HTML templates
-- Categories: Resume, Cover Letter, Invoice, Meeting Agenda
-- Scroll through multiple professional templates
-- One-click template selection
+### Core Editing
+- **Direct In-Document Editing** - Click anywhere to edit text, just like Microsoft Word
+- **Rich Text Formatting** - Bold, italic, underline, headings, lists, and more
+- **Floating Images** - Insert, drag, resize, and position images anywhere
+- **Table Editing** - Smart table toolbar with insert/delete rows/columns, merge cells, resize
+- **Format Painter** - Copy formatting from one element and apply to another
+- **Undo/Redo** - Full history support with keyboard shortcuts (Ctrl+Z/Ctrl+Shift+Z)
 
-### 2. 💬 AI Assistant
-- Left-side chat interface for conversing with AI
-- Collect personal information through natural conversation
-- Provide work experience, education, skills, and more
-- "Generate Resume" button for AI-powered resume creation
+### Document Management
+- **Template Library** - Browse and select from professional resume templates
+- **Auto-Save** - Changes automatically saved to localStorage (1-second debounce)
+- **Save Status Indicator** - Real-time feedback: Saving, Saved, Unsaved
+- **New Blank Document** - Start fresh with a blank document
+- **Copy HTML** - Export raw HTML to clipboard
 
-### 3. ✏️ WYSIWYG Editor (Main Feature)
-- **Direct editing** in the preview window - no HTML code needed
-- **Click anywhere to edit** text content
-- **Real-time preview** with preserved formatting
-- **Enable/Lock editing** mode for safe reviewing
-- All styles, layouts, and formatting preserved
+### Export Options
+- **PDF Export** - High-quality PDF generation with floating images included
+- **HTML Export** - Copy clean HTML code
 
-### 4. 🤖 AI Generation
-- Powered by OpenRouter API (Claude 3.5 Sonnet)
-- Generates customized resumes based on conversation
-- Modifies HTML templates intelligently
-- Serverless architecture - no backend required
+### AI-Powered Generation (Bonus Feature)
+- **AI Chat Assistant** - Conversational interface for providing resume information
+- **Smart Resume Generation** - AI generates customized resumes based on your input
+- **Template Preservation** - Original templates never modified; results saved separately
 
-### 5. 🔒 Template Protection (NEW)
-- **Original templates are protected** - never modified
-- **AI results auto-saved** to `data/temp_results/`
-- Each generation creates a timestamped file
-- Safe to experiment without losing original templates
+## 🚀 Quick Start
 
-### 6. 📄 High-Quality PDF Generation (NEW)
-- **Powered by Puppeteer** - Uses Chromium rendering engine
-- **Perfect dark backgrounds** - Supports all colors including #1a1a1a
-- **Vector text** - Searchable and selectable text
-- **Small file size** - ~100KB vs ~2MB
-- **Fast generation** - 2-3 seconds per PDF
-
-## 技术栈
-
-- **前端框架**: Next.js 14 (App Router)
-- **样式**: Tailwind CSS
-- **编程语言**: TypeScript
-- **代码编辑器**: CodeMirror 6
-- **AI 服务**: OpenRouter API (Claude 3.5 Sonnet)
-
-## 快速开始
-
-### 1. 安装依赖
+### Installation
 
 ```bash
 npm install
-# 或
-yarn install
-# 或
-pnpm install
 ```
 
-### 2. 配置环境变量
-
-复制 `.env.example` 文件为 `.env`：
-
-```bash
-cp .env.example .env
-```
-
-编辑 `.env` 文件，填入你的 OpenRouter API Key：
-
-```env
-OPENROUTER_API_KEY=your_api_key_here
-SITE_URL=http://localhost:3000
-```
-
-**获取 API Key:**
-1. 访问 [OpenRouter](https://openrouter.ai/)
-2. 注册并登录
-3. 在设置中获取你的 API Key
-
-### 3. 运行开发服务器
+### Development
 
 ```bash
 npm run dev
-# 或
-yarn dev
-# 或
-pnpm dev
 ```
 
-打开浏览器访问 [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3000](http://localhost:3000) to access the application.
 
-## 🚀 How to Use
+## 📖 Pages & Routes
 
-### Step 1: Select a Template
-Browse and select any HTML template from the top navigation bar.
+### `/` - Fullscreen Editor (Main Page)
+The primary editing interface with:
+- Full-screen A4-style document editing
+- Complete formatting toolbar
+- File menu (New, Template, Export)
+- Floating images and table support
+- Auto-save to localStorage
 
-### Step 2: Chat with AI
-Tell the AI about yourself in the left chat box:
-- "Hi, I'm John Smith, a frontend engineer with 5 years of experience"
-- "I graduated from Stanford University with a CS degree in 2018"
-- "My skills include React, TypeScript, Node.js, AWS"
+### `/doc-formatter` - AI Document Generator
+The original AI-powered resume generator with:
+- Template browser at top
+- AI chat interface on the left
+- Live preview on the right
+- Streaming AI generation
+- PDF download with high-quality rendering
 
-### Step 3: Generate Resume
-Click "Generate Resume" button. AI will create a customized resume based on your conversation.
-**Note**: The result is automatically saved to `data/temp_results/` - your original template remains unchanged.
+## 📖 Usage Guide
 
-### Step 4: Enable Editing
-Click "✏️ Enable Editing" button to activate WYSIWYG mode.
+### Creating a New Document
 
-### Step 5: Edit Directly
-Click anywhere in the preview to edit text. All formatting is preserved.
+1. Open [http://localhost:3000](http://localhost:3000)
+2. Click **File** → **New Blank Document** to start fresh
+3. Or click **File** → **Select Template...** to use a template
 
-### Step 6: Download PDF
-Click "Download PDF" button to generate a high-quality PDF using Chromium engine.
-Perfect for dark backgrounds and complex layouts!
+### Editing Content
 
-## 📖 Detailed Guide
+1. Click anywhere in the document to start editing
+2. Use the toolbar for formatting:
+   - **Bold**, *Italic*, <u>Underline</u>
+   - Headings (H1, H2, H3)
+   - Lists (bullet, numbered)
+   - Text alignment
+   - Font size
+3. Press **Enter** for new lines (smart line-end detection)
+4. Use **Ctrl+Z** to undo, **Ctrl+Shift+Z** to redo
 
-For comprehensive instructions, see [EDITING_GUIDE.md](./EDITING_GUIDE.md)
+### Working with Images
 
-## 📁 Project Structure
+1. Click the image icon in the toolbar
+2. Enter image URL
+3. Image appears as a floating layer that you can:
+   - **Drag** to reposition
+   - **Resize** using corner handles
+   - **Delete** with Delete/Backspace key
+
+### Editing Tables
+
+1. Click inside any table to activate the table toolbar
+2. Options include:
+   - Insert/delete rows and columns
+   - Merge/split cells
+   - Resize rows and columns
+   - Vertical alignment
+
+### Using Format Painter
+
+1. Select text with formatting you want to copy
+2. Click the format painter icon in the toolbar
+3. Select target text to apply the formatting
+
+### AI Resume Generation (Bonus Feature)
+
+1. Go to [http://localhost:3000/doc-formatter](http://localhost:3000/doc-formatter)
+2. Select a template from the top navigation
+3. Chat with the AI assistant to provide your information
+4. Click "Generate Resume" to create a customized resume
+5. Download as high-quality PDF
+
+### Exporting
+
+- **Export PDF** - Generates print-ready PDF with all formatting and images
+- **Copy HTML** - Copies the document's HTML source to clipboard
+
+## 🏗️ Project Structure
 
 ```
 latex-demo/
-├── app/                      # Next.js App Router
-│   ├── api/                  # API Routes
-│   │   ├── chat/            # AI chat endpoint
-│   │   ├── files/           # File list endpoint
-│   │   ├── file-content/    # File read/write endpoint
-│   │   └── generate-resume/ # Resume generation endpoint
-│   ├── globals.css          # Global styles
-│   ├── layout.tsx           # Root layout
-│   └── page.tsx             # Main page
-├── components/              # React Components
-│   ├── FileSelector.tsx     # Template browser
-│   ├── ChatBox.tsx          # AI chat interface
-│   └── EditablePreview.tsx  # WYSIWYG editor
+├── app/
+│   ├── api/
+│   │   ├── file-content/        # File content API
+│   │   ├── list-templates/      # Template listing API
+│   │   ├── generate-pdf/        # PDF generation API
+│   │   ├── generate-resume-stream/  # AI generation API
+│   │   └── temp-result/         # Temporary result storage
+│   ├── doc-formatter/
+│   │   └── page.tsx             # AI document generator page
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx                 # Fullscreen editor (homepage)
+├── components/
+│   ├── editor/
+│   │   ├── EditablePreview.tsx  # Main WYSIWYG editor component
+│   │   ├── EditorToolbar.tsx    # Formatting toolbar
+│   │   ├── FloatingImageLayer.tsx  # Floating images overlay
+│   │   ├── ImageResizer.tsx     # Image resize handles
+│   │   ├── TableSmartToolbar.tsx   # Table editing tools
+│   │   └── toolbar/
+│   │       └── TableHandler.ts  # Table manipulation logic
+│   ├── fullscreen-editor/
+│   │   ├── EditorPage.tsx       # Fullscreen editor page component
+│   │   ├── UnifiedToolbar.tsx   # Combined file + format toolbar
+│   │   ├── TemplateModal.tsx    # Template selection modal
+│   │   └── useEditorStorage.ts  # localStorage state management
+│   ├── FileSelector.tsx         # Template browser
+│   └── ChatBox.tsx              # AI chat interface
 ├── data/
-│   ├── html/                # Original HTML Templates (Protected)
-│   │   ├── resume-template/ # Resume templates
-│   │   ├── cover-letter-template/ # Cover letters
-│   │   ├── invoice/         # Invoice templates
-│   │   └── meeting-agenda-template/ # Meeting agendas
-│   └── temp_results/        # AI-generated results (Auto-saved)
-├── .env.local.example       # Environment variables
-├── EDITING_GUIDE.md         # Comprehensive editing guide
-├── CHANGELOG.md             # Version history
-└── README.md                # This file
+│   └── html/                    # HTML templates
+│       ├── resume-template/
+│       ├── cover-letter-template/
+│       └── invoice/
+└── public/                      # Static assets
 ```
 
-## API 接口说明
+## 🛠️ Technical Stack
 
-### GET `/api/files`
-获取所有 LaTeX 文件列表
+- **Framework**: Next.js 14.2 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **State Management**: React Hooks + localStorage
+- **Icons**: SVG (inline)
 
-### GET `/api/file-content?filename={name}`
-读取指定 LaTeX 文件内容
+## 📝 Component Architecture
 
-### POST `/api/file-content`
-保存 LaTeX 文件内容
+### EditablePreview
+The core editor component that handles:
+- iframe-based document rendering
+- Content editing and synchronization
+- Selection management
+- Undo/redo history
+- Floating image layer positioning
+- Scroll tracking
 
-### POST `/api/chat`
-与 AI 助手对话
+### UnifiedToolbar
+Combines two toolbars:
+1. **File Menu** - Document operations (New, Template, Copy HTML, Export PDF)
+2. **Editor Toolbar** - Formatting tools (Bold, Italic, Lists, Images, etc.)
 
-### POST `/api/generate-resume`
-根据对话内容生成简历
+### FloatingImageLayer
+Overlay layer that renders floating images:
+- Absolute positioning over the document
+- Drag-to-move functionality
+- Resize handles
+- Scroll offset compensation
 
-### POST `/api/temp-result`
-保存AI生成的结果到临时文件（不覆盖原模板）
+### TableSmartToolbar
+Context-aware toolbar for table operations:
+- Row/column manipulation
+- Cell merging/splitting
+- Resizing controls
+- Appears automatically when clicking inside tables
 
-### GET `/api/temp-result`
-获取所有临时结果文件列表
+## 🎨 Key Implementation Details
 
-### DELETE `/api/temp-result?filename={name}`
-删除指定的临时结果文件
+### Scroll-Independent Floating Images
+Floating images are rendered in a React layer overlaying the iframe, with scroll offset tracking to maintain position relative to document content.
 
-### POST `/api/generate-pdf`
-使用 Puppeteer 生成高质量PDF（支持深色背景和复杂CSS）
+### Format Painter
+Uses Clipboard API to copy and apply inline styles between text selections.
 
-### POST `/api/render-latex`
-渲染 LaTeX 为 HTML 预览
+### Table Editing
+Direct DOM manipulation of table elements with smart cell detection and boundary handling.
 
-## ⚠️ Important Notes
+### Auto-Save
+Debounced localStorage writes (1 second) to prevent excessive writes during editing.
 
-1. **Template Protection**: Original templates in `data/html/` are now protected. AI-generated results are automatically saved to `data/temp_results/` with timestamps. See [模板保护说明.md](./模板保护说明.md) for details.
+### PDF Export
+Temporarily inserts floating images into the document DOM before printing, then removes them after the print dialog closes.
 
-2. **Direct Editing**: Click "Enable Editing" to edit directly in the preview. Changes are tracked in real-time.
+### AI Streaming Generation
+Server-sent events for real-time resume generation with progressive content updates.
 
-3. **API Costs**: OpenRouter API usage incurs costs. Monitor your usage and credits.
+## 🔧 Development
 
-4. **Temporary Files**: AI generations create timestamped files in `data/temp_results/`. You may want to periodically clean up old files.
+### Adding New Templates
 
-5. **Model**: Currently uses Claude 3.5 Sonnet. You can change models in the API code.
+1. Create HTML file in `data/html/[category]/`
+2. File will automatically appear in template browser
 
-6. **Browser Compatibility**: Works best in modern browsers (Chrome, Firefox, Safari, Edge).
+### Customizing Toolbar
 
-## 部署
+Edit `components/editor/EditorToolbar.tsx` to add/remove formatting buttons.
 
-### Vercel 部署
+### Modifying Export Behavior
 
-1. Fork 此项目到你的 GitHub
-2. 在 [Vercel](https://vercel.com) 导入项目
-3. 在环境变量中配置 `OPENROUTER_API_KEY`
-4. 点击部署
+Edit `components/fullscreen-editor/EditorPage.tsx`:
+- `handleCopyHTML` - Modify HTML export behavior
+- `handleExportPDF` - Modify PDF generation
 
-### 其他平台
+## 🐛 Known Issues
 
-项目支持任何支持 Next.js 的 serverless 平台：
-- Netlify
-- AWS Amplify
-- Railway
-- Render
+1. **Floating Images Scroll** - In fullscreen editor mode, floating images don't scroll with the document (this is a known limitation due to different scroll containers)
 
-## 开发计划
+## 📄 License
 
-- [ ] 添加更多 LaTeX 模板
-- [ ] 改进 LaTeX 渲染（集成专业渲染引擎）
-- [ ] 支持 PDF 导出
-- [ ] 添加模板预览功能
-- [ ] 支持自定义模板上传
-- [ ] 添加简历版本历史
-- [ ] 多语言支持
+Apache License 2.0 - see [LICENSE](LICENSE) file for details
 
-## 许可证
+## 🤝 Contributing
 
-MIT License
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 联系方式
-
-如有问题或建议，请提交 Issue。
-
+Contributions are welcome! Please feel free to submit a Pull Request.
