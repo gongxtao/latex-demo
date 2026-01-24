@@ -352,7 +352,7 @@ export function setupMutationObserverMock(): void {
 export function createMutationObserverSpy() {
   const mockObserve = jest.fn();
   const mockDisconnect = jest.fn();
-  const mockTakeRecords = jest.fn(() => []);
+  const mockTakeRecords = jest.fn<MockMutationRecord[], []>(() => []);
 
   class SpyMutationObserver extends MockMutationObserver {
     observe(target: Node, options?: MockMutationObserverInit): void {

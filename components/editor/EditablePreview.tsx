@@ -553,7 +553,7 @@ export default function EditablePreview({
         const parent = endContainer.parentNode
         if (parent && parent.nextSibling) {
           // Check if next sibling has meaningful content
-          let nextSibling = parent.nextSibling
+          let nextSibling: ChildNode | null = parent.nextSibling
           while (nextSibling) {
             if (nextSibling.nodeType === Node.TEXT_NODE) {
               const text = (nextSibling as Text).textContent?.trim()
