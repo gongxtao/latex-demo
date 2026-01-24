@@ -734,6 +734,27 @@ export default function EditablePreview({
             cursor: move;
             max-width: 100%;
           }
+
+          /* Print styles */
+          @media print {
+            @page {
+              size: A4;
+              margin: 0;
+            }
+            html, body {
+              width: 210mm;
+              margin: 0 auto;
+              padding: 0;
+            }
+            body {
+              padding: 15mm;
+              box-sizing: border-box;
+            }
+            /* Hide edit indicators when printing */
+            body[contenteditable="true"]:focus {
+              outline: none;
+            }
+          }
         `
         iframeDoc.head.appendChild(style)
 

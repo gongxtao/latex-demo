@@ -93,20 +93,81 @@ export default function EditorPage() {
     if (!iframe) return
 
     const iframeDoc = iframe.contentDocument
-    if (!iframeDoc) return
+    const iframeWin = iframe.contentWindow
+    if (!iframeDoc || !iframeWin) return
 
-    const element = iframeDoc.body
-    const opt = {
-      margin: 0,
-      filename: `document-${Date.now()}.pdf`,
-      image: { type: 'jpeg' as const, quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
+    // Store original state
+    const body = iframeDoc.body
+    const wasEditable = body.getAttribute('contenteditable')
+
+    // Temporarily disable editing for clean print
+    body.removeAttribute('contenteditable')
+
+    // Remove focus outline
+    const originalOutline = body.style.outline
+    body.style.outline = 'none'
+
+    // Add or update print-specific styles
+    let printStyle = iframeDoc.getElementById('print-export-styles')
+    if (!printStyle) {
+      printStyle = iframeDoc.createElement('style')
+      printStyle.id = 'print-export-styles'
+      iframeDoc.head.appendChild(printStyle)
     }
 
-    // Dynamically import html2pdf to avoid SSR issues
-    const html2pdf = (await import('html2pdf.js')).default
-    html2pdf().set(opt).from(element).save()
+    printStyle.textContent = `
+      @media print {
+        @page {
+          size: A4;
+          margin: 0;
+        }
+        html {
+          width: 210mm;
+        }
+        body {
+          width: 210mm;
+          margin: 0 auto;
+          padding: 15mm;
+          box-sizing: border-box;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        body *:not(input):not(textarea) {
+          contenteditable: inherit !important;
+        }
+      }
+      @media screen {
+        html, body {
+          width: 210mm;
+          margin: 0 auto;
+        }
+        body {
+          padding: 15mm;
+          box-sizing: border-box;
+        }
+      }
+    `
+
+    // Trigger print
+    try {
+      iframeWin.print()
+    } catch (error) {
+      console.error('Print error:', error)
+      alert('打印失败，请重试')
+    } finally {
+      // Restore editing state after print dialog closes
+      setTimeout(() => {
+        if (wasEditable) {
+          body.setAttribute('contenteditable', wasEditable)
+        }
+        body.style.outline = originalOutline
+
+        // Remove temporary print styles
+        if (printStyle && printStyle.parentNode) {
+          printStyle.parentNode.removeChild(printStyle)
+        }
+      }, 100)
+    }
   }, [getIframe])
 
   const handleNewDocument = useCallback(() => {
@@ -144,7 +205,6 @@ export default function EditorPage() {
         iframeRef={iframeRef}
         onContentChange={handleContentChange}
         isEditing={true}
-        disabled={!htmlContent}
         onFloatingImageInsert={(imageUrl) => {
           // Handle floating image insert
           console.log('Insert floating image:', imageUrl)
@@ -154,6 +214,7 @@ export default function EditorPage() {
         onCopyHTML={handleCopyHTML}
         onExportPDF={handleExportPDF}
         saveStatus={saveStatus}
+        disableContentActions={!htmlContent}
       />
 
       {/* Scrollable Editor Area */}

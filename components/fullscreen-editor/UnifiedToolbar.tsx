@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import EditorToolbar, { EditorToolbarProps } from '@/components/editor/EditorToolbar'
 
@@ -10,6 +10,7 @@ interface UnifiedToolbarProps extends EditorToolbarProps {
   onCopyHTML: () => void
   onExportPDF: () => void
   saveStatus?: 'saving' | 'saved' | 'unsaved'
+  disableContentActions?: boolean
 }
 
 export default function UnifiedToolbar({
@@ -18,33 +19,43 @@ export default function UnifiedToolbar({
   onCopyHTML,
   onExportPDF,
   saveStatus,
+  disableContentActions,
   ...toolbarProps
 }: UnifiedToolbarProps) {
   const [isFileMenuOpen, setIsFileMenuOpen] = useState(false)
-  const fileMenuRef = useRef<HTMLDivElement>(null)
+  const fileMenuButtonRef = useRef<HTMLButtonElement>(null)
   const [fileMenuPosition, setFileMenuPosition] = useState({ top: 0, left: 0 })
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (fileMenuRef.current && !fileMenuRef.current.contains(event.target as Node)) {
-        setIsFileMenuOpen(false)
+      if (fileMenuButtonRef.current && !fileMenuButtonRef.current.contains(event.target as Node)) {
+        // Check if click is outside the portal menu
+        const portalMenu = document.querySelector('[data-file-menu="true"]')
+        if (portalMenu && !portalMenu.contains(event.target as Node)) {
+          setIsFileMenuOpen(false)
+        }
       }
     }
 
     if (isFileMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside)
+      // Small delay to prevent immediate closing
+      setTimeout(() => {
+        document.addEventListener('click', handleClickOutside)
+      }, 0)
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('click', handleClickOutside)
     }
   }, [isFileMenuOpen])
 
   // Calculate file menu position when it opens
   useEffect(() => {
-    if (isFileMenuOpen && fileMenuRef.current) {
-      const rect = fileMenuRef.current.getBoundingClientRect()
+    if (isFileMenuOpen && fileMenuButtonRef.current) {
+      const rect = fileMenuButtonRef.current.getBoundingClientRect()
       setFileMenuPosition({
         top: rect.bottom + window.scrollY,
         left: rect.left + window.scrollX
@@ -80,6 +91,7 @@ export default function UnifiedToolbar({
 
   const fileMenuContent = (
     <div
+      data-file-menu="true"
       className="absolute w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999]"
       style={{
         top: `${fileMenuPosition.top}px`,
@@ -88,7 +100,9 @@ export default function UnifiedToolbar({
     >
       <div className="py-1">
         <button
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation()
+            console.log('New document clicked')
             onNewDocument()
             setIsFileMenuOpen(false)
           }}
@@ -100,7 +114,9 @@ export default function UnifiedToolbar({
           新建空白文档
         </button>
         <button
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation()
+            console.log('Template modal clicked')
             onOpenTemplateModal()
             setIsFileMenuOpen(false)
           }}
@@ -113,11 +129,19 @@ export default function UnifiedToolbar({
         </button>
         <hr className="my-1 border-gray-200" />
         <button
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation()
+            if (disableContentActions) return
+            console.log('Copy HTML clicked')
             onCopyHTML()
             setIsFileMenuOpen(false)
           }}
-          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+          disabled={disableContentActions}
+          className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${
+            disableContentActions
+              ? 'text-gray-400 cursor-not-allowed'
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -125,14 +149,22 @@ export default function UnifiedToolbar({
           复制 HTML
         </button>
         <button
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation()
+            if (disableContentActions) return
+            console.log('Export PDF clicked')
             onExportPDF()
             setIsFileMenuOpen(false)
           }}
-          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+          disabled={disableContentActions}
+          className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${
+            disableContentActions
+              ? 'text-gray-400 cursor-not-allowed'
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.293.707V19a2 2 0 01-2 2z" />
           </svg>
           导出 PDF
         </button>
@@ -140,14 +172,20 @@ export default function UnifiedToolbar({
     </div>
   )
 
+  const handleFileMenuClick = () => {
+    console.log('File menu button clicked, current state:', isFileMenuOpen)
+    setIsFileMenuOpen(!isFileMenuOpen)
+  }
+
   return (
     <div className="sticky top-0 z-50 flex flex-col bg-white border-b border-gray-300 shadow-sm">
       {/* Main Toolbar Row */}
       <div className="flex items-center px-2 py-1 gap-2">
         {/* File Menu Dropdown */}
-        <div className="relative" ref={fileMenuRef}>
+        <div className="relative">
           <button
-            onClick={() => setIsFileMenuOpen(!isFileMenuOpen)}
+            ref={fileMenuButtonRef}
+            onClick={handleFileMenuClick}
             className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded flex items-center gap-1"
           >
             <span>文件</span>
