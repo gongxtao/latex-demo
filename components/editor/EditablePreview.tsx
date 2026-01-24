@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo, RefObject } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, RefObject, Ref, forwardRef, useImperativeHandle } from 'react'
 import { createPortal } from 'react-dom'
 import debounce from 'lodash/debounce'
 import EditorToolbar from './EditorToolbar'
@@ -22,9 +22,15 @@ interface EditablePreviewProps {
   hideControls?: boolean
   hideToolbar?: boolean
   iframeRef?: RefObject<HTMLIFrameElement>
+  previewRef?: Ref<EditablePreviewRef>
 }
 
-export default function EditablePreview({
+// Exposed methods for parent components
+export interface EditablePreviewRef {
+  insertFloatingImage: (imageUrl: string) => void
+}
+
+const EditablePreviewWithRef = function EditablePreview({
   selectedFile,
   content,
   onContentChange,
@@ -34,7 +40,8 @@ export default function EditablePreview({
   initialEditing = false,
   hideControls = false,
   hideToolbar = false,
-  iframeRef: externalIframeRef
+  iframeRef: externalIframeRef,
+  previewRef: externalPreviewRef
 }: EditablePreviewProps) {
   const [isEditing, setIsEditing] = useState(initialEditing)
   const internalIframeRef = useRef<HTMLIFrameElement>(null)
@@ -854,6 +861,11 @@ export default function EditablePreview({
     pushHistory({ html: lastSyncedContentRef.current, floatingImages: floatingImagesRef.current })
   }, [pushHistory])
 
+  // Expose insertFloatingImage method to parent components via previewRef
+  useImperativeHandle(externalPreviewRef, () => ({
+    insertFloatingImage: handleInsertFloatingImage
+  }), [handleInsertFloatingImage])
+
   const handleTableAction = (action: string, payload?: any) => {
     if (!activeTable) return
     const handler = new TableHandler(activeTable)
@@ -1114,3 +1126,14 @@ export default function EditablePreview({
     </div>
   )
 }
+
+// Forward ref and export
+const EditablePreview = forwardRef<EditablePreviewRef, EditablePreviewProps>((props, ref) => {
+  // Use ref as previewRef to expose insertFloatingImage method
+  const enhancedProps = { ...props, previewRef: ref }
+  return <EditablePreviewWithRef {...enhancedProps} />
+})
+
+EditablePreview.displayName = 'EditablePreview'
+
+export default EditablePreview

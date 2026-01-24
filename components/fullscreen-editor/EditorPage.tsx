@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import debounce from 'lodash/debounce'
-import EditablePreview from '@/components/editor/EditablePreview'
+import EditablePreview, { EditablePreviewRef } from '@/components/editor/EditablePreview'
 import UnifiedToolbar from './UnifiedToolbar'
 import TemplateModal from './TemplateModal'
 import { useEditorStorage, FloatingImageItem } from './useEditorStorage'
@@ -14,6 +14,7 @@ export default function EditorPage() {
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const editablePreviewRef = useRef<EditablePreviewRef>(null)
   const {
     htmlContent,
     setHtmlContent,
@@ -32,32 +33,30 @@ export default function EditorPage() {
     return containerRef.current?.querySelector('iframe') || null
   }, [])
 
-  // Create debounced save function
-  const debouncedSave = useMemo(
-    () => debounce((content: string, images: FloatingImageItem[]) => {
-      setHtmlContent(content)
-      setFloatingImages(images)
-      setSaveStatus('saved')
-    }, 1000),
-    [setHtmlContent, setFloatingImages]
-  )
-
-  // Cancel debounce on unmount
-  useEffect(() => {
-    return () => {
-      debouncedSave.cancel()
-    }
-  }, [debouncedSave])
-
+  // Simple content change handler - just update state
   const handleContentChange = useCallback((content: string) => {
+    setHtmlContent(content)
     setSaveStatus('unsaved')
-    debouncedSave(content, floatingImages)
-  }, [debouncedSave, floatingImages])
+  }, [setHtmlContent])
 
+  // Simple floating images change handler - just update state
   const handleFloatingImagesChange = useCallback((images: FloatingImageItem[]) => {
+    setFloatingImages(images)
     setSaveStatus('unsaved')
-    debouncedSave(htmlContent, images)
-  }, [debouncedSave, htmlContent])
+  }, [setFloatingImages])
+
+  // Auto-save to localStorage with debouncing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (htmlContent) {
+        localStorage.setItem('editor-content', htmlContent)
+      }
+      localStorage.setItem('editor-floating-images', JSON.stringify(floatingImages))
+      setSaveStatus('saved')
+    }, 1000)
+
+    return () => clearTimeout(timer)
+  }, [htmlContent, floatingImages])
 
   const handleTemplateSelect = useCallback(async (templatePath: string) => {
     try {
@@ -206,8 +205,8 @@ export default function EditorPage() {
         onContentChange={handleContentChange}
         isEditing={true}
         onFloatingImageInsert={(imageUrl) => {
-          // Handle floating image insert
-          console.log('Insert floating image:', imageUrl)
+          // Delegate to EditablePreview's insertFloatingImage method
+          editablePreviewRef.current?.insertFloatingImage(imageUrl)
         }}
         onNewDocument={handleNewDocument}
         onOpenTemplateModal={() => setIsTemplateModalOpen(true)}
@@ -225,6 +224,7 @@ export default function EditorPage() {
           ref={containerRef}
         >
           <EditablePreview
+            ref={editablePreviewRef}
             iframeRef={iframeRef}
             selectedFile={selectedTemplate}
             content={htmlContent}
