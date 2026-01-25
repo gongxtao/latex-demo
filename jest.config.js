@@ -28,6 +28,7 @@ const customJestConfig = {
   testPathIgnorePatterns: [
     '/node_modules/',
     '/.next/',
+    '/e2e/', // Exclude E2E Playwright tests
     '/test/utils/', // Exclude test utilities
     '/test/fixtures/', // Exclude test fixtures
     '/test/__mocks__/', // Exclude test mocks

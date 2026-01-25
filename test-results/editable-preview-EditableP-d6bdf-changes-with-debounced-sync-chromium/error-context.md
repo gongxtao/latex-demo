@@ -1,0 +1,105 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - heading "EditablePreview E2E Test Page" [level=1] [ref=e3]
+    - paragraph [ref=e4]: This page is used for Playwright E2E testing of the EditablePreview component.
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic [ref=e8]: "Editing: resume"
+          - text: ✏️ Edit Mode Active - Click anywhere to edit
+        - generic [ref=e9]:
+          - button "🔒 Lock Preview" [ref=e10] [cursor=pointer]
+          - button "🔄 Refresh" [ref=e11] [cursor=pointer]
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - button "Undo" [ref=e15] [cursor=pointer]:
+            - img [ref=e16]
+          - button "Redo" [ref=e18] [cursor=pointer]:
+            - img [ref=e19]
+          - button "Format Painter" [ref=e21] [cursor=pointer]:
+            - img [ref=e22]
+          - button "Clear formatting" [ref=e24] [cursor=pointer]:
+            - img [ref=e25]
+        - separator [ref=e27]
+        - button "Normal Text" [ref=e30] [cursor=pointer]:
+          - generic [ref=e31]: Normal Text
+          - img [ref=e32]
+        - button "Arial" [ref=e36] [cursor=pointer]:
+          - generic [ref=e37]: Arial
+          - img [ref=e38]
+        - generic [ref=e42]:
+          - textbox "Select..." [ref=e43]: 16px
+          - button [ref=e44] [cursor=pointer]:
+            - img [ref=e45]
+        - separator [ref=e47]
+        - generic [ref=e48]:
+          - button "Bold" [ref=e49] [cursor=pointer]:
+            - img [ref=e50]
+          - button "Italic" [ref=e52] [cursor=pointer]:
+            - img [ref=e53]
+          - button "Underline" [ref=e55] [cursor=pointer]:
+            - img [ref=e56]
+          - button "Strikethrough" [ref=e58] [cursor=pointer]:
+            - img [ref=e59]
+          - button "Superscript" [ref=e61] [cursor=pointer]:
+            - img [ref=e62]:
+              - generic [ref=e63]: X
+              - generic [ref=e64]: "2"
+          - button "Subscript" [ref=e65] [cursor=pointer]:
+            - img [ref=e66]:
+              - generic [ref=e67]: X
+              - generic [ref=e68]: "2"
+        - separator [ref=e69]
+        - generic [ref=e70]:
+          - button "Text color" [ref=e72] [cursor=pointer]:
+            - img [ref=e74]:
+              - generic [ref=e75]: A
+          - button "Background color" [ref=e78] [cursor=pointer]:
+            - img [ref=e80]
+        - separator [ref=e84]
+        - generic [ref=e85]:
+          - button "Align left" [pressed] [ref=e86] [cursor=pointer]:
+            - img [ref=e87]
+          - button "Align center" [ref=e89] [cursor=pointer]:
+            - img [ref=e90]
+          - button "Align right" [ref=e92] [cursor=pointer]:
+            - img [ref=e93]
+          - button "Justify" [ref=e95] [cursor=pointer]:
+            - img [ref=e96]
+        - separator [ref=e98]
+        - generic [ref=e99]:
+          - button "Outdent" [ref=e100] [cursor=pointer]:
+            - img [ref=e101]
+          - button "Indent" [ref=e103] [cursor=pointer]:
+            - img [ref=e104]
+          - button "Line Spacing" [ref=e107] [cursor=pointer]:
+            - img [ref=e108]
+        - separator [ref=e110]
+        - generic [ref=e111]:
+          - button "Bulleted list" [ref=e112] [cursor=pointer]:
+            - img [ref=e113]
+          - button "Numbered list" [ref=e115] [cursor=pointer]:
+            - img [ref=e116]
+        - separator [ref=e118]
+        - generic [ref=e119]:
+          - button "Insert link" [ref=e120] [cursor=pointer]:
+            - img [ref=e121]
+          - button "Remove link" [ref=e123] [cursor=pointer]:
+            - img [ref=e124]
+        - separator [ref=e127]
+        - generic [ref=e128]:
+          - button "Insert image" [ref=e130] [cursor=pointer]:
+            - img [ref=e131]
+          - button "Insert floating image" [ref=e134] [cursor=pointer]:
+            - img [ref=e135]
+          - button "Insert table" [ref=e139] [cursor=pointer]:
+            - img [ref=e140]
+          - button "Horizontal line" [ref=e142] [cursor=pointer]:
+            - img [ref=e143]
+      - iframe [active] [ref=e147]:
+        - paragraph [ref=f2e2]: Content
+  - alert [ref=e148]
+```

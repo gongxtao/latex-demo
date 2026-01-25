@@ -13,7 +13,11 @@
     "test:coverage": "jest --coverage",
     "test:debug": "jest --runInBand",
     "test:report": "bash test/generate-report.sh",
-    "test:report:open": "open test/report.html"
+    "test:report:open": "open test/report.html",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
     "@codemirror/language": "^6.10.0",
@@ -33,6 +37,8 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@next/swc-darwin-x64": "^14.2.33",
+    "@playwright/test": "^1.58.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
     "@types/jest": "^30.0.0",
