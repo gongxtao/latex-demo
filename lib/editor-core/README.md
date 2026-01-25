@@ -4,6 +4,86 @@
 
 Editor Core 是一个可复用的富文本编辑器核心引擎，提供了命令管理、状态管理、历史管理、插件系统、配置系统和主题系统。
 
+## 快速开始
+
+### 基础用法示例
+
+```typescript
+'use client'
+
+import { useRef, useEffect } from 'react'
+import {
+  CommandManager,
+  StateManager,
+  HistoryManager,
+  registerBuiltinCommands
+} from '@/lib/editor-core'
+
+export function MyEditor() {
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  // 初始化核心管理器
+  const commandManager = useRef<CommandManager | null>(null)
+  const stateManager = useRef<StateManager | null>(null)
+  const historyManager = useRef<HistoryManager | null>(null)
+
+  useEffect(() => {
+    // 初始化
+    commandManager.current = new CommandManager()
+    stateManager.current = new StateManager({ content: '<p>Hello World</p>' })
+    historyManager.current = new HistoryManager()
+
+    // 注册内置命令
+    registerBuiltinCommands(commandManager.current)
+
+    // 保存初始状态
+    historyManager.current.push(stateManager.current.getState())
+  }, [])
+
+  const getIframeDoc = () => iframeRef.current?.contentDocument
+
+  const handleBold = () => {
+    const doc = getIframeDoc()
+    if (doc && commandManager.current) {
+      commandManager.current.execute('bold', doc)
+
+      // 更新状态
+      const newContent = doc.documentElement.outerHTML
+      stateManager.current?.partialUpdate({ content: newContent })
+
+      // 保存历史
+      historyManager.current?.push(stateManager.current.getState())
+    }
+  }
+
+  const handleUndo = () => {
+    const previous = historyManager.current?.undo()
+    if (previous && stateManager.current) {
+      stateManager.current.setState(previous)
+
+      // 更新 iframe 内容
+      const doc = getIframeDoc()
+      if (doc && previous.content) {
+        doc.documentElement.outerHTML = previous.content
+      }
+    }
+  }
+
+  return (
+    <div>
+      <button onClick={handleBold}>Bold</button>
+      <button
+        onClick={handleUndo}
+        disabled={!historyManager.current?.canUndo()}
+      >
+        Undo
+      </button>
+      <iframe ref={iframeRef} />
+    </div>
+  )
+}
+```
+
 ## 核心模块
 
 ### CommandManager - 命令管理器

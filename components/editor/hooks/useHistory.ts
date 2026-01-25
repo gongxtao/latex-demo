@@ -13,40 +13,38 @@ interface HistoryStore {
   future: HistoryState[]
 }
 
-const isSameImages = (a: FloatingImageItem[], b: FloatingImageItem[]) => {
-  if (a.length !== b.length) return false
-  for (let i = 0; i < a.length; i += 1) {
-    const left = a[i]
-    const right = b[i]
-    if (
-      left.id !== right.id ||
-      left.src !== right.src ||
-      left.x !== right.x ||
-      left.y !== right.y ||
-      left.width !== right.width ||
-      left.height !== right.height
-    ) {
-      return false
-    }
-  }
-  return true
-}
-
+/**
+ * useHistory Hook - 保留原始实现，稍后进行渐进式重构
+ *
+ * 注：由于 HistoryManager 的语义与原始实现不同，
+ * 暂时保留原始实现，后续统一核心引擎后再迁移
+ */
 export default function useHistory(initialState: { html: string; floatingImages: FloatingImageItem[] }) {
   const historyRef = useRef<HistoryStore>({
     past: [],
     present: { html: initialState.html, floatingImages: initialState.floatingImages, timestamp: Date.now() },
     future: []
   })
-  
+
   // Force update to trigger re-renders when history changes (for UI buttons)
   const [, forceUpdate] = useState({})
 
   const push = useCallback((nextState: { html: string; floatingImages: FloatingImageItem[] }) => {
     const { past, present } = historyRef.current
-    
+
     // Avoid pushing identical content
-    if (present.html === nextState.html && isSameImages(present.floatingImages, nextState.floatingImages)) return
+    if (present.html === nextState.html &&
+        present.floatingImages.length === nextState.floatingImages.length &&
+        present.floatingImages.every((img, i) =>
+          img.id === nextState.floatingImages[i]?.id &&
+          img.src === nextState.floatingImages[i]?.src &&
+          img.x === nextState.floatingImages[i]?.x &&
+          img.y === nextState.floatingImages[i]?.y &&
+          img.width === nextState.floatingImages[i]?.width &&
+          img.height === nextState.floatingImages[i]?.height
+        )) {
+      return
+    }
 
     const newPast = [...past, present]
     if (newPast.length > 50) {
@@ -74,7 +72,7 @@ export default function useHistory(initialState: { html: string; floatingImages:
       future: [present, ...future]
     }
     forceUpdate({})
-    
+
     return previous
   }, [])
 
