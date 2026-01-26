@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useCallback, useMemo, RefObject, Ref, forw
 import { createPortal } from 'react-dom'
 import debounce from 'lodash/debounce'
 import EditorToolbar from './EditorToolbar'
-import useHistory from './hooks/useHistory'
+import { HistoryManager } from '@/lib/editor-core'
+import type { EditorState } from '@/lib/editor-core'
 import ImageResizer from './ImageResizer'
 import FloatingImageLayer, { FloatingImageItem } from './FloatingImageLayer'
 import TableSmartToolbar from './toolbar/TableSmartToolbar'
@@ -28,6 +29,34 @@ interface EditablePreviewProps {
 // Exposed methods for parent components
 export interface EditablePreviewRef {
   insertFloatingImage: (imageUrl: string) => void
+}
+
+/**
+ * 转换为 EditorState 格式
+ */
+function toEditorState(content: string, floatingImages: FloatingImageItem[]): EditorState {
+  return {
+    content,
+    floatingImages,
+    isEditing: false,
+    readonly: false,
+    selection: null,
+    selectedImage: null,
+    selectedFloatingImageId: null,
+    activeTable: null,
+    toolbarVisible: true,
+    sidebarVisible: false
+  }
+}
+
+/**
+ * 从 EditorState 转换回来
+ */
+function fromEditorState(state: EditorState): { html: string; floatingImages: FloatingImageItem[] } {
+  return {
+    html: state.content,
+    floatingImages: state.floatingImages
+  }
 }
 
 const EditablePreviewWithRef = function EditablePreview({
@@ -63,21 +92,25 @@ const EditablePreviewWithRef = function EditablePreview({
   const selectedFloatingImageIdRef = useRef<string | null>(null)
   const [iframeScroll, setIframeScroll] = useState({ x: 0, y: 0 })
   const previewContainerRef = useRef<HTMLDivElement>(null)
-  
-  // History management
-  const { push: pushHistory, undo, redo, canUndo, canRedo } = useHistory({
-    html: content,
-    floatingImages
-  })
+
+  // HistoryManager - 直接使用核心引擎
+  const historyManagerRef = useRef<HistoryManager | null>(null)
+  if (!historyManagerRef.current) {
+    historyManagerRef.current = new HistoryManager(50)
+    // 初始化
+    historyManagerRef.current.initialize(toEditorState(content, floatingImages))
+  }
+  const historyManager = historyManagerRef.current
 
   // Create debounced sync function
   const debouncedSync = useMemo(
     () => debounce((newHtml: string) => {
       onContentChange(newHtml)
       lastSyncedContentRef.current = newHtml
-      pushHistory({ html: newHtml, floatingImages: floatingImagesRef.current })
+      // 保存到历史
+      historyManager.push(toEditorState(newHtml, floatingImagesRef.current))
     }, 1000),
-    [onContentChange, pushHistory]
+    [onContentChange, historyManager]
   )
 
   // Cancel debounce on unmount
@@ -87,14 +120,25 @@ const EditablePreviewWithRef = function EditablePreview({
     }
   }, [debouncedSync])
 
+  // 同步 floatingImages
   useEffect(() => {
     floatingImagesRef.current = floatingImages
   }, [floatingImages])
 
+  // 同步 selectedFloatingImageId
   useEffect(() => {
     selectedFloatingImageIdRef.current = selectedFloatingImageId
   }, [selectedFloatingImageId])
 
+  // 监听外部 content 变化，更新历史
+  useEffect(() => {
+    if (content !== lastSyncedContentRef.current && !isUpdatingRef.current) {
+      lastSyncedContentRef.current = content
+      // 不要在这里 push 历史，因为外部变化不应该创建新的历史条目
+    }
+  }, [content])
+
+  // iframe scroll tracking
   useEffect(() => {
     const iframe = iframeRef.current
     if (!iframe) return
@@ -214,11 +258,11 @@ const EditablePreviewWithRef = function EditablePreview({
   const getCleanHtml = (doc: Document): string => {
     // Clone the document element to avoid modifying the live DOM
     const clone = doc.documentElement.cloneNode(true) as HTMLElement
-    
+
     // Remove all resizer roots (handle potential duplicates from bad saves)
     const resizerRoots = clone.querySelectorAll('#image-resizer-root')
     resizerRoots.forEach(el => el.remove())
-    
+
     // Remove all editor styles
     const editorStyles = clone.querySelectorAll('#editor-style')
     editorStyles.forEach(el => el.remove())
@@ -229,7 +273,7 @@ const EditablePreviewWithRef = function EditablePreview({
        if (body) {
          body.removeAttribute('contenteditable')
          body.removeAttribute('style') // Remove outline/cursor styles
-         
+
          // Remove contenteditable from all descendants
          const editables = body.querySelectorAll('[contenteditable]')
          editables.forEach(el => el.removeAttribute('contenteditable'))
@@ -244,7 +288,7 @@ const EditablePreviewWithRef = function EditablePreview({
          })
        }
     }
-    
+
     return clone.outerHTML
   }
 
@@ -254,7 +298,7 @@ const EditablePreviewWithRef = function EditablePreview({
     isUpdatingRef.current = true
     const iframeDoc = iframeRef.current?.contentDocument
     if (!iframeDoc) return
-    
+
     const newHtml = getCleanHtml(iframeDoc)
     debouncedSync(newHtml)
     setTimeout(() => {
@@ -264,27 +308,33 @@ const EditablePreviewWithRef = function EditablePreview({
 
   const handleUndo = useCallback(() => {
     debouncedSync.flush()
-    const nextState = undo()
-    if (nextState !== null) {
+    const previous = historyManager.undo()
+    if (previous !== null) {
+      const { html, floatingImages: newImages } = fromEditorState(previous)
       forceContentSyncRef.current = true
-      onContentChange(nextState.html)
-      lastSyncedContentRef.current = nextState.html
-      onFloatingImagesChange(nextState.floatingImages)
+      onContentChange(html)
+      lastSyncedContentRef.current = html
+      onFloatingImagesChange(newImages)
       handleSelectFloatingImage(null)
     }
-  }, [undo, onContentChange, debouncedSync, onFloatingImagesChange, handleSelectFloatingImage])
+  }, [historyManager, onContentChange, debouncedSync, onFloatingImagesChange, handleSelectFloatingImage])
 
   const handleRedo = useCallback(() => {
     debouncedSync.flush()
-    const nextState = redo()
-    if (nextState !== null) {
+    const next = historyManager.redo()
+    if (next !== null) {
+      const { html, floatingImages: newImages } = fromEditorState(next)
       forceContentSyncRef.current = true
-      onContentChange(nextState.html)
-      lastSyncedContentRef.current = nextState.html
-      onFloatingImagesChange(nextState.floatingImages)
+      onContentChange(html)
+      lastSyncedContentRef.current = html
+      onFloatingImagesChange(newImages)
       handleSelectFloatingImage(null)
     }
-  }, [redo, onContentChange, debouncedSync, onFloatingImagesChange, handleSelectFloatingImage])
+  }, [historyManager, onContentChange, debouncedSync, onFloatingImagesChange, handleSelectFloatingImage])
+
+  // 暴露历史操作方法
+  const canUndo = historyManager.canUndo()
+  const canRedo = historyManager.canRedo()
 
   // Image resize functionality moved to ImageResizer component
 
@@ -327,14 +377,14 @@ const EditablePreviewWithRef = function EditablePreview({
     // Inject a dedicated root for the resizer to avoid interference
     iframeDoc.write('<div id="image-resizer-root" style="position: absolute; top: 0; left: 0; width: 0; height: 0; overflow: visible; z-index: 2147483647;"></div>')
     iframeDoc.close()
-    
+
     // Enable CSS mode for execCommand
     try {
       iframeDoc.execCommand('styleWithCSS', false, 'true')
     } catch (e) {
       console.warn('Failed to enable styleWithCSS', e)
     }
-    
+
     if (iframeDoc.body) {
       // Find our dedicated root
       const resizerRoot = iframeDoc.getElementById('image-resizer-root')
@@ -356,7 +406,7 @@ const EditablePreviewWithRef = function EditablePreview({
       if (target.nodeType === 3 && target.parentElement) {
         target = target.parentElement
       }
-      
+
       // Select image
       if (target.tagName === 'IMG') {
         setSelectedImage(target as HTMLImageElement)
@@ -379,7 +429,7 @@ const EditablePreviewWithRef = function EditablePreview({
           setSelectedImage(null)
       }
     }
-    
+
     // Handle context menu to activate table
     const handleContextMenu = (e: MouseEvent) => {
         if (!isEditing) return
@@ -393,11 +443,11 @@ const EditablePreviewWithRef = function EditablePreview({
             setActiveTable(table as HTMLTableElement)
         }
     }
-    
+
     // Handle global mousedown for deselection (more reliable than click)
     const handleGlobalMouseDown = (e: MouseEvent) => {
       if (!isEditing) return
-      
+
       let target = e.target as HTMLElement
       if (target.nodeType === 3 && target.parentElement) {
         target = target.parentElement
@@ -409,14 +459,14 @@ const EditablePreviewWithRef = function EditablePreview({
         setActiveTable(null)
         return
       }
-      
+
       // Don't deselect if clicking on image or resizer handle
       if (target.tagName === 'IMG' || target.classList.contains('resizer-handle')) {
         return
       }
 
       handleSelectFloatingImage(null)
-      
+
       // If clicking inside a table, activate it immediately
       const table = target.closest('table')
       if (table) {
@@ -430,7 +480,7 @@ const EditablePreviewWithRef = function EditablePreview({
       setSelectedImage(null)
       setActiveTable(null)
     }
-    
+
     // Handle mouseup as fallback for click (sometimes click is swallowed during editing)
     const handleMouseUp = (e: MouseEvent) => {
       if (!isEditing) return
@@ -457,13 +507,13 @@ const EditablePreviewWithRef = function EditablePreview({
       iframeDoc.addEventListener('click', handleGlobalClick, false)
       iframeDoc.addEventListener('mouseup', handleMouseUp, false)
       iframeDoc.addEventListener('contextmenu', handleContextMenu, false)
-      
+
       // Listen for selection changes to clear image selection when cursor moves elsewhere
       iframeDoc.addEventListener('selectionchange', () => {
         if (!isEditing) return
-        
+
         const selection = iframeDoc.getSelection()
-        
+
         // Check if selection is inside a table to activate it
         if (selection && selection.rangeCount > 0) {
             const range = selection.getRangeAt(0)
@@ -471,10 +521,10 @@ const EditablePreviewWithRef = function EditablePreview({
             if (node.nodeType === 3 && node.parentElement) {
                 node = node.parentElement
             }
-            
+
             const element = node as HTMLElement
              const table = element.closest('table')
-             
+
              if (table) {
                  setActiveTable(table as HTMLTableElement)
              } else {
@@ -672,7 +722,7 @@ const EditablePreviewWithRef = function EditablePreview({
           const nextImages = floatingImagesRef.current.filter(image => image.id !== floatingId)
           onFloatingImagesChange(nextImages)
           handleSelectFloatingImage(null)
-          pushHistory({ html: lastSyncedContentRef.current, floatingImages: nextImages })
+          historyManager.push(toEditorState(lastSyncedContentRef.current, nextImages))
           return
         }
         if (selectedImage) {
@@ -680,7 +730,7 @@ const EditablePreviewWithRef = function EditablePreview({
           e.stopPropagation()
           selectedImage.remove()
           setSelectedImage(null)
-          
+
           const newHtml = getCleanHtml(iframeDoc)
           debouncedSync(newHtml)
           return
@@ -791,7 +841,7 @@ const EditablePreviewWithRef = function EditablePreview({
         iframeDoc.body.contentEditable = 'false'
       }
     }
-  }, [content, isEditing, handleInput, onContentChange, restoreSelection, saveSelection, handleUndo, handleRedo, canUndo, canRedo, debouncedSync, selectedImage, activeTable, selectedFloatingImageId, onFloatingImagesChange, pushHistory, handleSelectFloatingImage])
+  }, [content, isEditing, handleInput, onContentChange, restoreSelection, saveSelection, handleUndo, handleRedo, canUndo, canRedo, debouncedSync, selectedImage, activeTable, selectedFloatingImageId, onFloatingImagesChange, historyManager, handleSelectFloatingImage])
 
   const toggleEditMode = useCallback(() => {
     // If we're exiting edit mode, sync the latest content first
@@ -802,7 +852,7 @@ const EditablePreviewWithRef = function EditablePreview({
         const latestHtml = getCleanHtml(iframeDoc)
         onContentChange(latestHtml)
       }
-      
+
       // Clear all selection states immediately
       setSelectedImage(null)
       setActiveTable(null)
@@ -810,7 +860,7 @@ const EditablePreviewWithRef = function EditablePreview({
       // Clear iframe body to ensure Portals are unmounted
       setIframeBody(null)
     }
-    
+
     // Toggle state
     setIsEditing(prev => !prev)
     setPreviewKey(prev => prev + 1)
@@ -852,14 +902,14 @@ const EditablePreviewWithRef = function EditablePreview({
       )
       floatingImagesRef.current = resizedImages
       onFloatingImagesChange(resizedImages)
-      pushHistory({ html: lastSyncedContentRef.current, floatingImages: resizedImages })
+      historyManager.push(toEditorState(lastSyncedContentRef.current, resizedImages))
     }
     loader.src = imageUrl
-  }, [onFloatingImagesChange, pushHistory])
+  }, [onFloatingImagesChange, historyManager])
 
   const handleFloatingImagesCommit = useCallback(() => {
-    pushHistory({ html: lastSyncedContentRef.current, floatingImages: floatingImagesRef.current })
-  }, [pushHistory])
+    historyManager.push(toEditorState(lastSyncedContentRef.current, floatingImagesRef.current))
+  }, [historyManager])
 
   // Expose insertFloatingImage method to parent components via previewRef
   useImperativeHandle(externalPreviewRef, () => ({
@@ -926,7 +976,7 @@ const EditablePreviewWithRef = function EditablePreview({
                  for (let c = startCol; c <= endCol; c++) {
                      const cell = handler.getCellAt(r, c)
                      if (cell && !cells.includes(cell)) {
-                         cells.push(cell)
+                       cells.push(cell)
                      }
                  }
              }
@@ -955,9 +1005,9 @@ const EditablePreviewWithRef = function EditablePreview({
                  for (let c = startCol; c <= endCol; c++) {
                      const cell = handler.getCellAt(r, c)
                      if (cell) {
-                         if (action === 'valignTop') cell.style.verticalAlign = 'top'
-                         if (action === 'valignMiddle') cell.style.verticalAlign = 'middle'
-                         if (action === 'valignBottom') cell.style.verticalAlign = 'bottom'
+                       if (action === 'valignTop') cell.style.verticalAlign = 'top'
+                       if (action === 'valignMiddle') cell.style.verticalAlign = 'middle'
+                       if (action === 'valignBottom') cell.style.verticalAlign = 'bottom'
                      }
                  }
              }
@@ -1042,7 +1092,7 @@ const EditablePreviewWithRef = function EditablePreview({
       )}
 
       {/* Editable Preview Area */}
-      <div 
+      <div
         className="flex-1 overflow-auto bg-gray-50 p-4 relative"
         onMouseDown={(e) => {
           // Clear selection when clicking on the gray background area
@@ -1054,7 +1104,7 @@ const EditablePreviewWithRef = function EditablePreview({
         }}
       >
         {selectedFile ? (
-          <div 
+          <div
             className="max-w-5xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden relative"
             ref={previewContainerRef}
             onMouseDown={(e) => {
@@ -1095,7 +1145,7 @@ const EditablePreviewWithRef = function EditablePreview({
             )}
             {/* Render resizer outside iframe but position it over it, OR render inside if using Portal correctly */}
             {isEditing && iframeBody && createPortal(
-        <ImageResizer 
+        <ImageResizer
           target={selectedImage}
           iframeDoc={iframeRef.current?.contentDocument || null}
           onUpdate={() => {

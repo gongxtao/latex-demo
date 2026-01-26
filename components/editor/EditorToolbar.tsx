@@ -1,12 +1,12 @@
 /**
- * EditorToolbar Component (Refactored)
+ * EditorToolbar Component (彻底迁移到核心引擎)
  * Configuration-driven toolbar implementation
- * Reduced from 413 lines to ~250 lines
+ * 直接使用 CommandManager 而非通过 Hook
  */
 
 'use client'
 
-import React, { RefObject } from 'react'
+import React, { RefObject, useRef, useMemo } from 'react'
 
 // Core components
 import ToolbarRow from './toolbar/core/ToolbarRow'
@@ -16,8 +16,10 @@ import ButtonRenderer from './toolbar/core/ButtonRenderer'
 import ToolbarGroup from './toolbar/groups/ToolbarGroup'
 import ToolbarSeparator from './toolbar/groups/ToolbarSeparator'
 
-// Hooks
-import { useEditorCommands } from './toolbar/hooks/useEditorCommands'
+// Core Engine - 直接使用
+import { CommandManager, registerBuiltinCommands } from '@/lib/editor-core'
+
+// Hooks - 仅保留查询状态的 Hook
 import { useEditorState } from './toolbar/hooks/useEditorState'
 
 // Config
@@ -59,7 +61,7 @@ export interface EditorToolbarProps {
 }
 
 /**
- * Main toolbar component with configuration-driven rendering
+ * Main toolbar component - 直接使用 CommandManager
  */
 const EditorToolbar: React.FC<EditorToolbarProps> = ({
   iframeRef,
@@ -68,8 +70,15 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   disabled: propsDisabled,
   onFloatingImageInsert
 }) => {
+  // CommandManager - 直接使用核心引擎
+  const commandManagerRef = useRef<CommandManager | null>(null)
+  if (!commandManagerRef.current) {
+    commandManagerRef.current = new CommandManager()
+    registerBuiltinCommands(commandManagerRef.current)
+  }
+  const commandManager = commandManagerRef.current
+
   // Icon mapping for button configs
-  // Defined inside component to ensure all imports are available and to force re-evaluation
   const iconMap: Record<string, React.ComponentType<any>> = {
     'undo': UndoIcon,
     'redo': RedoIcon,
@@ -110,15 +119,424 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
   const disabled = propsDisabled || !isEditing
 
-  // Use editor commands hook
-  const { commands, isFormatPainterActive } = useEditorCommands({
-    iframeRef,
-    onContentChange,
-    isEditing
-  })
+  // 获取 iframe document
+  const getIframeDoc = () => {
+    return iframeRef.current?.contentDocument ||
+           iframeRef.current?.contentWindow?.document ||
+           null
+  }
 
-  // Use editor state hook
+  // Use editor state hook - 保留用于查询格式状态
   const { editorState } = useEditorState({ iframeRef })
+
+  // 格式刷状态 - 需要手动管理
+  const [isFormatPainterActive, setIsFormatPainterActive] = React.useState(false)
+  const savedStylesRef = useRef<Record<string, any>>({})
+
+  /**
+   * 查询命令状态
+   */
+  const queryCommandStates = (doc: Document): Record<string, any> => {
+    const styles: Record<string, any> = {}
+
+    // Query boolean states
+    const booleanStates = ['bold', 'italic', 'underline', 'strikeThrough', 'subscript', 'superscript', 'insertOrderedList', 'insertUnorderedList']
+    booleanStates.forEach(cmd => {
+      try {
+        styles[cmd] = doc.queryCommandState(cmd)
+      } catch (e) {
+        styles[cmd] = false
+      }
+    })
+
+    // Query value states
+    try {
+      styles.foreColor = doc.queryCommandValue('foreColor')
+      styles.backColor = doc.queryCommandValue('backColor') || doc.queryCommandValue('hiliteColor')
+      styles.fontName = doc.queryCommandValue('fontName')
+      styles.fontSize = doc.queryCommandValue('fontSize')
+
+      // Query block states
+      if (doc.queryCommandState('justifyCenter')) styles.justify = 'justifyCenter'
+      else if (doc.queryCommandState('justifyRight')) styles.justify = 'justifyRight'
+      else if (doc.queryCommandState('justifyFull')) styles.justify = 'justifyFull'
+      else if (doc.queryCommandState('justifyLeft')) styles.justify = 'justifyLeft'
+    } catch (e) {
+      console.warn('Failed to query style values', e)
+    }
+
+    // Get computed styles for more accuracy
+    const selection = doc.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      const element = selection.anchorNode?.nodeType === 1
+        ? selection.anchorNode as Element
+        : selection.anchorNode?.parentElement
+
+      if (element) {
+        const win = doc.defaultView || window
+        const computed = win.getComputedStyle(element)
+        styles.computedColor = computed.color
+        styles.computedBackgroundColor = computed.backgroundColor
+        styles.computedFontFamily = computed.fontFamily
+        styles.computedFontSize = computed.fontSize
+
+        // Block computed styles
+        let blockNode = element
+        while (blockNode && blockNode !== doc.body) {
+          const display = win.getComputedStyle(blockNode).display
+          if (display === 'block' || display === 'list-item') {
+            styles.computedLineHeight = win.getComputedStyle(blockNode).lineHeight
+            break
+          }
+          blockNode = blockNode.parentElement as Element
+        }
+      }
+    }
+
+    return styles
+  }
+
+  /**
+   * 应用保存的样式（格式刷）
+   */
+  const applySavedStyles = (doc: Document) => {
+    const styles = savedStylesRef.current
+    if (!styles) return
+
+    const booleanStates = ['bold', 'italic', 'underline', 'strikeThrough', 'subscript', 'superscript', 'insertOrderedList', 'insertUnorderedList']
+    booleanStates.forEach(cmd => {
+      const currentState = doc.queryCommandState(cmd)
+      const targetState = styles[cmd]
+      if (currentState !== targetState) {
+        commandManager!.execute(cmd, doc)
+      }
+    })
+
+    // Apply justification
+    if (styles.justify) {
+      const currentJustify =
+        doc.queryCommandState('justifyCenter') ? 'justifyCenter' :
+          doc.queryCommandState('justifyRight') ? 'justifyRight' :
+            doc.queryCommandState('justifyFull') ? 'justifyFull' : 'justifyLeft'
+
+      if (currentJustify !== styles.justify) {
+        commandManager.execute(styles.justify, doc)
+      }
+    }
+
+    // Apply values
+    if (styles.foreColor) commandManager.execute('foreColor', doc, styles.foreColor)
+
+    // Background color
+    if (styles.backColor && styles.backColor !== 'rgba(0, 0, 0, 0)' && styles.backColor !== 'transparent') {
+      commandManager.execute('hiliteColor', doc, styles.backColor)
+    }
+
+    // Font Name
+    if (styles.fontName) commandManager.execute('fontName', doc, styles.fontName)
+
+    // Font Size - use fontSize custom command
+    if (styles.computedFontSize) {
+      commandManager.execute('fontSize', doc, styles.computedFontSize)
+    } else if (styles.fontSize) {
+      doc.execCommand('fontSize', false, styles.fontSize)
+    }
+
+    // Line Height - use lineHeight custom command
+    if (styles.computedLineHeight && styles.computedLineHeight !== 'normal') {
+      commandManager.execute('lineHeight', doc, styles.computedLineHeight)
+    }
+  }
+
+  /**
+   * 创建命令对象（映射到 CommandManager）
+   */
+  const commands = useMemo(() => ({
+    // History
+    undo: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) commandManager.execute('undo', doc)
+    },
+    redo: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) commandManager.execute('redo', doc)
+    },
+
+    // Format Painter
+    formatPainter: () => {
+      const doc = getIframeDoc()
+      if (!doc) return
+
+      if (isFormatPainterActive) {
+        // Deactivate
+        setIsFormatPainterActive(false)
+        savedStylesRef.current = {}
+      } else {
+        // Activate and capture
+        savedStylesRef.current = queryCommandStates(doc)
+        setIsFormatPainterActive(true)
+      }
+    },
+
+    // Text format
+    bold: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('bold', doc)
+        // 触发内容变化
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+    italic: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('italic', doc)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+    underline: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('underline', doc)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+    strikeThrough: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('strikeThrough', doc)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+    superscript: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('superscript', doc)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+    subscript: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('subscript', doc)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+
+    // Alignment
+    justifyLeft: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('justifyLeft', doc)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+    justifyCenter: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('justifyCenter', doc)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+    justifyRight: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('justifyRight', doc)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+    justifyFull: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('justifyFull', doc)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+
+    // Indentation
+    indent: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('indent', doc)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+    outdent: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('outdent', doc)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+
+    // Lists
+    insertUnorderedList: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('insertUnorderedList', doc)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+    insertOrderedList: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('insertOrderedList', doc)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+
+    // Insert
+    createLink: (url?: string) => {
+      const doc = getIframeDoc()
+      if (!doc || !commandManager) return
+
+      commandManager.execute('createLink', doc, url)
+      const newHtml = doc.documentElement.outerHTML
+      onContentChange(newHtml)
+    },
+    unlink: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('unlink', doc)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+    insertImage: (imageUrl: string) => {
+      const doc = getIframeDoc()
+      if (!doc || !commandManager) return
+
+      commandManager.execute('insertImage', doc, imageUrl)
+      setTimeout(() => {
+        if (doc.body) {
+          const newHtml = doc.documentElement.outerHTML
+          onContentChange(newHtml)
+        }
+      }, 20)
+    },
+    insertHorizontalRule: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('insertHorizontalRule', doc)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+
+    // Block format
+    formatBlock: (tag: string) => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('formatBlock', doc, tag)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+
+    // Colors
+    foreColor: (color: string) => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('foreColor', doc, color)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+    hiliteColor: (color: string) => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('hiliteColor', doc, color)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+
+    // Clear formatting
+    removeFormat: () => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('removeFormat', doc)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+
+    // Custom styles
+    fontFamily: (name: string) => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('fontFamily', doc, name)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+    fontSize: (size: string) => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('fontSize', doc, size)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+    lineHeight: (value: string) => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('lineHeight', doc, value)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    },
+
+    // Insert table
+    insertTable: (rows: number, cols: number) => {
+      const doc = getIframeDoc()
+      if (doc && commandManager) {
+        commandManager.execute('insertTable', doc, rows, cols)
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    }
+  }), [commandManager, onContentChange, isFormatPainterActive])
+
+  // 格式刷自动应用逻辑
+  React.useEffect(() => {
+    if (!isFormatPainterActive) return
+
+    const doc = getIframeDoc()
+    if (!doc) return
+
+    const handleMouseUp = () => {
+      const selection = doc.getSelection()
+      if (selection && !selection.isCollapsed) {
+        // Apply styles and deactivate
+        applySavedStyles(doc)
+        setIsFormatPainterActive(false)
+        savedStylesRef.current = {}
+        // 触发内容变化
+        const newHtml = doc.documentElement.outerHTML
+        onContentChange(newHtml)
+      }
+    }
+
+    doc.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      doc.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isFormatPainterActive, onContentChange])
 
   // Helper to determine button state
   const getButtonState = (id: string): { isActive: boolean } => {
@@ -128,11 +546,11 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
       case 'align-center': return { isActive: editorState.align === 'center' }
       case 'align-right': return { isActive: editorState.align === 'right' }
       case 'align-justify': return { isActive: editorState.align === 'justify' }
-      
+
       // Lists
       case 'bulleted-list': return { isActive: editorState.isUnorderedList }
       case 'numbered-list': return { isActive: editorState.isOrderedList }
-      
+
       // Toggles (Format)
       case 'format-bold': return { isActive: editorState.isBold }
       case 'format-italic': return { isActive: editorState.isItalic }
@@ -141,7 +559,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
       case 'subscript': return { isActive: editorState.isSubscript }
       case 'superscript': return { isActive: editorState.isSuperscript }
       case 'format-painter': return { isActive: isFormatPainterActive }
-      
+
       default: return { isActive: false }
     }
   }
@@ -266,7 +684,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             />
           )}
         </ToolbarGroup>
-        
+
         {/* Font Size */}
         <ToolbarGroup id="font-size">
           {fontSizeConfig && (

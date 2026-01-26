@@ -1,11 +1,12 @@
 /**
- * useEditorCommands Hook
- * Centralizes editor command execution logic
- * Handles format application, selection preservation, and change notification
+ * useEditorCommands Hook - 已迁移到使用 CommandManager
+ *
+ * 使用新的核心引擎进行命令执行，同时保持原有 API 不变
+ * 特殊功能（如格式刷）保留在 Hook 中
  */
 
-import { useRef, RefObject, useState, useEffect } from 'react'
-import { applyStyle } from '../../utils/style'
+import { useRef, RefObject, useState, useEffect, useCallback } from 'react'
+import { CommandManager, registerBuiltinCommands } from '@/lib/editor-core'
 
 export interface UseEditorCommandsOptions {
   /** Ref to the iframe element */
@@ -14,6 +15,118 @@ export interface UseEditorCommandsOptions {
   onContentChange: (content: string) => void
   /** Whether editing is currently active */
   isEditing: boolean
+}
+
+/**
+ * 查询命令状态
+ */
+function queryCommandStates(doc: Document): Record<string, any> {
+  const styles: Record<string, any> = {}
+
+  // Query boolean states
+  const booleanStates = ['bold', 'italic', 'underline', 'strikeThrough', 'subscript', 'superscript', 'insertOrderedList', 'insertUnorderedList']
+  booleanStates.forEach(cmd => {
+    try {
+      styles[cmd] = doc.queryCommandState(cmd)
+    } catch (e) {
+      styles[cmd] = false
+    }
+  })
+
+  // Query value states
+  try {
+    styles.foreColor = doc.queryCommandValue('foreColor')
+    styles.backColor = doc.queryCommandValue('backColor') || doc.queryCommandValue('hiliteColor')
+    styles.fontName = doc.queryCommandValue('fontName')
+    styles.fontSize = doc.queryCommandValue('fontSize')
+
+    // Query block states
+    if (doc.queryCommandState('justifyCenter')) styles.justify = 'justifyCenter'
+    else if (doc.queryCommandState('justifyRight')) styles.justify = 'justifyRight'
+    else if (doc.queryCommandState('justifyFull')) styles.justify = 'justifyFull'
+    else if (doc.queryCommandState('justifyLeft')) styles.justify = 'justifyLeft'
+  } catch (e) {
+    console.warn('Failed to query style values', e)
+  }
+
+  // Get computed styles for more accuracy
+  const selection = doc.getSelection()
+  if (selection && selection.rangeCount > 0) {
+    const element = selection.anchorNode?.nodeType === 1
+      ? selection.anchorNode as Element
+      : selection.anchorNode?.parentElement
+
+    if (element) {
+      const win = doc.defaultView || window
+      const computed = win.getComputedStyle(element)
+      styles.computedColor = computed.color
+      styles.computedBackgroundColor = computed.backgroundColor
+      styles.computedFontFamily = computed.fontFamily
+      styles.computedFontSize = computed.fontSize
+
+      // Block computed styles
+      let blockNode = element
+      while (blockNode && blockNode !== doc.body) {
+        const display = win.getComputedStyle(blockNode).display
+        if (display === 'block' || display === 'list-item') {
+          styles.computedLineHeight = win.getComputedStyle(blockNode).lineHeight
+          break
+        }
+        blockNode = blockNode.parentElement as Element
+      }
+    }
+  }
+
+  return styles
+}
+
+/**
+ * 应用保存的样式
+ */
+function applySavedStyles(doc: Document, commandManager: CommandManager, styles: Record<string, any>) {
+  const booleanStates = ['bold', 'italic', 'underline', 'strikeThrough', 'subscript', 'superscript', 'insertOrderedList', 'insertUnorderedList']
+  booleanStates.forEach(cmd => {
+    const currentState = doc.queryCommandState(cmd)
+    const targetState = styles[cmd]
+    if (currentState !== targetState) {
+      commandManager.execute(cmd, doc)
+    }
+  })
+
+  // Apply justification
+  if (styles.justify) {
+    const currentJustify =
+      doc.queryCommandState('justifyCenter') ? 'justifyCenter' :
+        doc.queryCommandState('justifyRight') ? 'justifyRight' :
+          doc.queryCommandState('justifyFull') ? 'justifyFull' : 'justifyLeft'
+
+    if (currentJustify !== styles.justify) {
+      commandManager.execute(styles.justify, doc)
+    }
+  }
+
+  // Apply values
+  if (styles.foreColor) commandManager.execute('foreColor', doc, styles.foreColor)
+
+  // Background color
+  if (styles.backColor && styles.backColor !== 'rgba(0, 0, 0, 0)' && styles.backColor !== 'transparent') {
+    commandManager.execute('hiliteColor', doc, styles.backColor)
+  }
+
+  // Font Name
+  if (styles.fontName) commandManager.execute('fontName', doc, styles.fontName)
+
+  // Font Size - use fontSize custom command
+  if (styles.computedFontSize) {
+    commandManager.execute('fontSize', doc, styles.computedFontSize)
+  } else if (styles.fontSize) {
+    doc.execCommand('fontSize', false, styles.fontSize)
+  }
+
+  // Line Height - use lineHeight custom command
+  if (styles.computedLineHeight && styles.computedLineHeight !== 'normal') {
+    commandManager.execute('lineHeight', doc, styles.computedLineHeight)
+  }
 }
 
 export function useEditorCommands({
@@ -25,15 +138,26 @@ export function useEditorCommands({
   const [isFormatPainterActive, setIsFormatPainterActive] = useState(false)
   const savedStylesRef = useRef<Record<string, any>>({})
 
+  // 使用 useRef 保持 CommandManager 实例在重新渲染之间保持不变
+  const commandManagerRef = useRef<CommandManager | null>(null)
+
+  // 创建并初始化 CommandManager
+  if (!commandManagerRef.current) {
+    commandManagerRef.current = new CommandManager()
+    registerBuiltinCommands(commandManagerRef.current)
+  }
+
+  const commandManager = commandManagerRef.current
+
   // Get the iframe document
   const getIframeDoc = () => {
     return iframeRef.current?.contentDocument ||
-           iframeRef.current?.contentWindow?.document ||
-           null
+      iframeRef.current?.contentWindow?.document ||
+      null
   }
 
   // Apply a format function to the editor
-  const applyFormat = (fn: (doc: Document) => void) => {
+  const applyFormat = useCallback((fn: (doc: Document) => void) => {
     const doc = getIframeDoc()
     if (!doc || !isEditing) return
 
@@ -82,176 +206,17 @@ export function useEditorCommands({
     setTimeout(() => {
       isUpdatingRef.current = false
     }, 50)
-  }
-
-  // Apply a custom style
-  const applyCustomStyle = (styleName: string, value: string) => {
-    const doc = getIframeDoc()
-    if (!doc || !isEditing) return
-
-    applyStyle(doc, styleName, value)
-
-    // Sync change
-    isUpdatingRef.current = true
-    const newHtml = doc.documentElement.outerHTML
-    onContentChange(newHtml)
-    setTimeout(() => {
-      isUpdatingRef.current = false
-    }, 50)
-  }
-
-  // Helper to apply line height to block
-  const applyLineHeight = (doc: Document, value: string) => {
-    const selection = doc.getSelection()
-    if (!selection || selection.rangeCount === 0) return
-    
-    // Find parent block element
-    let node = selection.anchorNode
-    // If node is text node, get parent
-    if (node && node.nodeType === 3) {
-      node = node.parentNode
-    }
-    
-    // Traverse up to find a block element
-    while (node && node !== doc.body) {
-      const el = node as HTMLElement
-      const display = typeof window !== 'undefined' ? window.getComputedStyle(el).display : 'block'
-      
-      // Simple check for block elements or common text containers
-      if (['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'BLOCKQUOTE'].includes(el.nodeName) || display === 'block') {
-        el.style.lineHeight = value
-        break
-      }
-      node = node.parentNode
-    }
-  }
+  }, [getIframeDoc, isEditing, iframeRef, onContentChange])
 
   // ============================================================================
-  // Text Formatting Commands
+  // Commands
   // ============================================================================
-
-  const captureStyles = (doc: Document) => {
-    const styles: Record<string, any> = {}
-    
-    // Query boolean states
-    const booleanStates = ['bold', 'italic', 'underline', 'strikeThrough', 'subscript', 'superscript', 'insertOrderedList', 'insertUnorderedList']
-    booleanStates.forEach(cmd => {
-      try {
-        styles[cmd] = doc.queryCommandState(cmd)
-      } catch (e) {
-        styles[cmd] = false
-      }
-    })
-
-    // Query value states
-    try {
-      styles.foreColor = doc.queryCommandValue('foreColor')
-      styles.backColor = doc.queryCommandValue('backColor') || doc.queryCommandValue('hiliteColor')
-      styles.fontName = doc.queryCommandValue('fontName')
-      styles.fontSize = doc.queryCommandValue('fontSize')
-      
-      // Query block states
-      if (doc.queryCommandState('justifyCenter')) styles.justify = 'justifyCenter'
-      else if (doc.queryCommandState('justifyRight')) styles.justify = 'justifyRight'
-      else if (doc.queryCommandState('justifyFull')) styles.justify = 'justifyFull'
-      else if (doc.queryCommandState('justifyLeft')) styles.justify = 'justifyLeft'
-    } catch (e) {
-      console.warn('Failed to query style values', e)
-    }
-
-    // Get computed styles for more accuracy
-    const selection = doc.getSelection()
-    if (selection && selection.rangeCount > 0) {
-      const element = selection.anchorNode?.nodeType === 1 
-        ? selection.anchorNode as Element 
-        : selection.anchorNode?.parentElement
-
-      if (element) {
-        const win = doc.defaultView || window
-        const computed = win.getComputedStyle(element)
-        styles.computedColor = computed.color
-        styles.computedBackgroundColor = computed.backgroundColor
-        styles.computedFontFamily = computed.fontFamily
-        styles.computedFontSize = computed.fontSize
-        
-        // Block computed styles
-        // Find block parent for line height
-        let blockNode = element
-        while (blockNode && blockNode !== doc.body) {
-           const display = win.getComputedStyle(blockNode).display
-           if (display === 'block' || display === 'list-item') {
-             styles.computedLineHeight = win.getComputedStyle(blockNode).lineHeight
-             break
-           }
-           blockNode = blockNode.parentElement as Element
-        }
-      }
-    }
-
-    return styles
-  }
-
-  const applySavedStyles = (doc: Document) => {
-    const styles = savedStylesRef.current
-    if (!styles) return
-
-    applyFormat(doc => {
-      // Apply boolean states
-      const booleanStates = ['bold', 'italic', 'underline', 'strikeThrough', 'subscript', 'superscript', 'insertOrderedList', 'insertUnorderedList']
-      booleanStates.forEach(cmd => {
-        const currentState = doc.queryCommandState(cmd)
-        const targetState = styles[cmd]
-        if (currentState !== targetState) {
-          doc.execCommand(cmd)
-        }
-      })
-
-      // Apply justification
-      if (styles.justify) {
-         const currentJustify = 
-            doc.queryCommandState('justifyCenter') ? 'justifyCenter' :
-            doc.queryCommandState('justifyRight') ? 'justifyRight' :
-            doc.queryCommandState('justifyFull') ? 'justifyFull' : 'justifyLeft'
-         
-         if (currentJustify !== styles.justify) {
-            doc.execCommand(styles.justify)
-         }
-      }
-
-      // Apply values
-      if (styles.foreColor) doc.execCommand('foreColor', false, styles.foreColor)
-      
-      // Background color
-      if (styles.backColor && styles.backColor !== 'rgba(0, 0, 0, 0)' && styles.backColor !== 'transparent') {
-         if (doc.queryCommandSupported('hiliteColor')) {
-            doc.execCommand('hiliteColor', false, styles.backColor)
-         } else {
-            doc.execCommand('backColor', false, styles.backColor)
-         }
-      }
-      
-      // Font Name
-      if (styles.fontName) doc.execCommand('fontName', false, styles.fontName)
-      
-      // Font Size
-      if (styles.computedFontSize) {
-         applyStyle(doc, 'fontSize', styles.computedFontSize)
-      } else if (styles.fontSize) {
-         doc.execCommand('fontSize', false, styles.fontSize)
-      }
-
-      // Line Height
-      if (styles.computedLineHeight && styles.computedLineHeight !== 'normal') {
-         applyLineHeight(doc, styles.computedLineHeight)
-      }
-    })
-  }
 
   const commands = {
     // History
-    undo: () => applyFormat(doc => doc.execCommand('undo')),
-    redo: () => applyFormat(doc => doc.execCommand('redo')),
-    
+    undo: () => applyFormat(doc => commandManager.execute('undo', doc)),
+    redo: () => applyFormat(doc => commandManager.execute('redo', doc)),
+
     // Format Painter
     formatPainter: () => {
       const doc = getIframeDoc()
@@ -263,112 +228,71 @@ export function useEditorCommands({
         savedStylesRef.current = {}
       } else {
         // Activate and capture
-        savedStylesRef.current = captureStyles(doc)
+        savedStylesRef.current = queryCommandStates(doc)
         setIsFormatPainterActive(true)
       }
     },
 
     // Text format
-    bold: () => applyFormat(doc => doc.execCommand('bold')),
-    italic: () => applyFormat(doc => doc.execCommand('italic')),
-    underline: () => applyFormat(doc => doc.execCommand('underline')),
-    strikeThrough: () => applyFormat(doc => doc.execCommand('strikeThrough')),
-    superscript: () => applyFormat(doc => doc.execCommand('superscript')),
-    subscript: () => applyFormat(doc => doc.execCommand('subscript')),
+    bold: () => applyFormat(doc => commandManager.execute('bold', doc)),
+    italic: () => applyFormat(doc => commandManager.execute('italic', doc)),
+    underline: () => applyFormat(doc => commandManager.execute('underline', doc)),
+    strikeThrough: () => applyFormat(doc => commandManager.execute('strikeThrough', doc)),
+    superscript: () => applyFormat(doc => commandManager.execute('superscript', doc)),
+    subscript: () => applyFormat(doc => commandManager.execute('subscript', doc)),
 
     // Alignment
-    justifyLeft: () => applyFormat(doc => doc.execCommand('justifyLeft')),
-    justifyCenter: () => applyFormat(doc => doc.execCommand('justifyCenter')),
-    justifyRight: () => applyFormat(doc => doc.execCommand('justifyRight')),
-    justifyFull: () => applyFormat(doc => doc.execCommand('justifyFull')),
+    justifyLeft: () => applyFormat(doc => commandManager.execute('justifyLeft', doc)),
+    justifyCenter: () => applyFormat(doc => commandManager.execute('justifyCenter', doc)),
+    justifyRight: () => applyFormat(doc => commandManager.execute('justifyRight', doc)),
+    justifyFull: () => applyFormat(doc => commandManager.execute('justifyFull', doc)),
 
     // Indentation
-    indent: () => applyFormat(doc => doc.execCommand('indent')),
-    outdent: () => applyFormat(doc => doc.execCommand('outdent')),
+    indent: () => applyFormat(doc => commandManager.execute('indent', doc)),
+    outdent: () => applyFormat(doc => commandManager.execute('outdent', doc)),
 
     // Lists
-    insertUnorderedList: () => applyFormat(doc => doc.execCommand('insertUnorderedList')),
-    insertOrderedList: () => applyFormat(doc => doc.execCommand('insertOrderedList')),
+    insertUnorderedList: () => applyFormat(doc => commandManager.execute('insertUnorderedList', doc)),
+    insertOrderedList: () => applyFormat(doc => commandManager.execute('insertOrderedList', doc)),
 
     // Insert
     createLink: (url?: string) => {
-      const linkUrl = url || (typeof window !== 'undefined' ? window.prompt('Enter link URL') : null)
-      if (!linkUrl) return
-      applyFormat(doc => {
-        const sel = doc.getSelection()
-        if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
-          doc.execCommand('createLink', false, linkUrl)
-        } else {
-          doc.execCommand('insertHTML', false, `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${linkUrl}</a>`)
-        }
-      })
+      const doc = getIframeDoc()
+      if (!doc || !isEditing) return
+      applyFormat(() => commandManager.execute('createLink', doc, url))
     },
-    unlink: () => applyFormat(doc => doc.execCommand('unlink')),
-    insertImage: (imageUrl: string) => applyFormat(doc => {
-      doc.execCommand('insertImage', false, imageUrl)
+    unlink: () => applyFormat(doc => commandManager.execute('unlink', doc)),
+    insertImage: (imageUrl: string) => {
+      const doc = getIframeDoc()
+      if (!doc || !isEditing) return
+      commandManager.execute('insertImage', doc, imageUrl)
+      // Sync change manually
+      isUpdatingRef.current = true
+      const newHtml = doc.documentElement.outerHTML
+      onContentChange(newHtml)
       setTimeout(() => {
-        doc.body?.dispatchEvent(new Event('input', { bubbles: true }))
-      }, 10)
-    }),
-    insertHorizontalRule: () => applyFormat(doc => doc.execCommand('insertHorizontalRule')),
+        isUpdatingRef.current = false
+      }, 50)
+    },
+    insertHorizontalRule: () => applyFormat(doc => commandManager.execute('insertHorizontalRule', doc)),
 
     // Block format
-    formatBlock: (tag: string) => applyFormat(doc => doc.execCommand('formatBlock', false, tag)),
+    formatBlock: (tag: string) => applyFormat(doc => commandManager.execute('formatBlock', doc, tag)),
 
     // Colors
-    foreColor: (color: string) => applyFormat(doc => doc.execCommand('foreColor', false, color)),
-    hiliteColor: (color: string) => applyFormat(doc => {
-      if (doc.queryCommandSupported('hiliteColor')) {
-        doc.execCommand('hiliteColor', false, color)
-      } else {
-        doc.execCommand('backColor', false, color)
-      }
-    }),
+    foreColor: (color: string) => applyFormat(doc => commandManager.execute('foreColor', doc, color)),
+    hiliteColor: (color: string) => applyFormat(doc => commandManager.execute('hiliteColor', doc, color)),
 
     // Clear formatting
-    removeFormat: () => applyFormat(doc => doc.execCommand('removeFormat')),
+    removeFormat: () => applyFormat(doc => commandManager.execute('removeFormat', doc)),
 
     // Custom styles
-    fontFamily: (name: string) => applyCustomStyle('fontFamily', name),
-    fontSize: (size: string) => applyCustomStyle('fontSize', size),
-    lineHeight: (value: string) => applyFormat(doc => {
-      const selection = doc.getSelection()
-      if (!selection || selection.rangeCount === 0) return
-      
-      // Find parent block element
-      let node = selection.anchorNode
-      // If node is text node, get parent
-      if (node && node.nodeType === 3) {
-        node = node.parentNode
-      }
-      
-      // Traverse up to find a block element
-      while (node && node !== doc.body) {
-        const el = node as HTMLElement
-        const display = typeof window !== 'undefined' ? window.getComputedStyle(el).display : 'block'
-        
-        // Simple check for block elements or common text containers
-        if (['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'BLOCKQUOTE'].includes(el.nodeName) || display === 'block') {
-          el.style.lineHeight = value
-          break
-        }
-        node = node.parentNode
-      }
-    }),
+    fontFamily: (name: string) => applyFormat(doc => commandManager.execute('fontFamily', doc, name)),
+    fontSize: (size: string) => applyFormat(doc => commandManager.execute('fontSize', doc, size)),
+    lineHeight: (value: string) => applyFormat(doc => commandManager.execute('lineHeight', doc, value)),
 
     // Insert table
-    insertTable: (rows: number, cols: number) => {
-      let html = '<table style="border-collapse: collapse; width: 100%;"><tbody>'
-      for (let i = 0; i < rows; i++) {
-        html += '<tr>'
-        for (let j = 0; j < cols; j++) {
-          html += '<td style="border: 1px solid #ccc; padding: 8px; min-width: 60px; height: 32px;"></td>'
-        }
-        html += '</tr>'
-      }
-      html += '</tbody></table>'
-      applyFormat(doc => doc.execCommand('insertHTML', false, html))
-    }
+    insertTable: (rows: number, cols: number) => applyFormat(doc => commandManager.execute('insertTable', doc, rows, cols))
   }
 
   // Handle format painter auto-apply
@@ -382,7 +306,7 @@ export function useEditorCommands({
       const selection = doc.getSelection()
       if (selection && !selection.isCollapsed) {
         // Apply styles and deactivate
-        applySavedStyles(doc)
+        applyFormat((doc) => applySavedStyles(doc, commandManager, savedStylesRef.current))
         setIsFormatPainterActive(false)
         savedStylesRef.current = {}
       }
@@ -392,7 +316,7 @@ export function useEditorCommands({
     return () => {
       doc.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isFormatPainterActive])
+  }, [isFormatPainterActive, applyFormat, commandManager, getIframeDoc])
 
   return {
     commands,

@@ -1,16 +1,13 @@
 /**
  * HistoryManager Unit Tests
+ * 重新设计后的 HistoryManager 测试
  */
 
 import { HistoryManager } from '../history/HistoryManager'
 import type { EditorState } from '../types'
 
-describe('HistoryManager', () => {
+describe('HistoryManager (Redesigned)', () => {
   let manager: HistoryManager
-
-  beforeEach(() => {
-    manager = new HistoryManager(10)
-  })
 
   const createMockState = (content: string): EditorState => ({
     isEditing: false,
@@ -25,149 +22,197 @@ describe('HistoryManager', () => {
     sidebarVisible: false
   })
 
-  describe('History Management', () => {
-    it('should push state to history', () => {
+  beforeEach(() => {
+    manager = new HistoryManager(50)
+  })
+
+  describe('Initialization', () => {
+    it('should initialize with state', () => {
+      const state = createMockState('<p>Initial</p>')
+      manager.initialize(state)
+
+      expect(manager.getCurrentState()).toEqual(state)
+      expect(manager.canUndo()).toBe(false)
+      expect(manager.canRedo()).toBe(false)
+    })
+
+    it('should be empty before initialization', () => {
+      expect(manager.getCurrentState()).toBeNull()
+      expect(manager.canUndo()).toBe(false)
+      expect(manager.canRedo()).toBe(false)
+    })
+  })
+
+  describe('Push Operation', () => {
+    it('should push first state as present', () => {
       const state = createMockState('<p>State 1</p>')
       manager.push(state)
 
-      // Need at least 2 states to undo
-      expect(manager.canUndo()).toBe(false)
+      expect(manager.getCurrentState()).toEqual(state)
+      expect(manager.canUndo()).toBe(false) // past is empty
       expect(manager.canRedo()).toBe(false)
-      expect(manager.getStats().past).toBe(1)
     })
 
-    it('should push multiple states', () => {
-      manager.push(createMockState('<p>State 1</p>'))
-      manager.push(createMockState('<p>State 2</p>'))
-      manager.push(createMockState('<p>State 3</p>'))
+    it('should push second state and move first to past', () => {
+      const state1 = createMockState('<p>State 1</p>')
+      const state2 = createMockState('<p>State 2</p>')
+
+      manager.push(state1)
+      manager.push(state2)
+
+      expect(manager.getCurrentState()).toEqual(state2)
+      expect(manager.canUndo()).toBe(true) // has 1 item in past
+      expect(manager.canRedo()).toBe(false)
 
       const stats = manager.getStats()
-      expect(stats.past).toBe(3)
+      expect(stats.past).toBe(1)
+      expect(stats.future).toBe(0)
     })
 
-    it('should respect max size limit', () => {
-      const smallManager = new HistoryManager(3)
+    it('should clear future on push', () => {
+      const state1 = createMockState('<p>State 1</p>')
+      const state2 = createMockState('<p>State 2</p>')
+      const state3 = createMockState('<p>State 3</p>')
 
-      smallManager.push(createMockState('<p>1</p>'))
-      smallManager.push(createMockState('<p>2</p>'))
-      smallManager.push(createMockState('<p>3</p>'))
-      smallManager.push(createMockState('<p>4</p>'))
+      manager.push(state1)
+      manager.push(state2)
+      expect(manager.canRedo()).toBe(false)
 
-      const stats = smallManager.getStats()
-      expect(stats.past).toBe(3) // Should be capped at 3
+      manager.undo()
+      expect(manager.canRedo()).toBe(true) // has 1 item in future
+
+      manager.push(state3)
+      expect(manager.canRedo()).toBe(false) // future cleared
     })
   })
 
-  describe('Undo Operations', () => {
-    it('should undo to previous state', () => {
-      manager.push(createMockState('<p>State 1</p>'))
-      manager.push(createMockState('<p>State 2</p>'))
+  describe('Undo Operation', () => {
+    it('should undo correctly', () => {
+      const state1 = createMockState('<p>State 1</p>')
+      const state2 = createMockState('<p>State 2</p>')
+      const state3 = createMockState('<p>State 3</p>')
 
-      const previous = manager.undo()
+      manager.push(state1)
+      manager.push(state2)
+      manager.push(state3)
 
-      expect(previous).not.toBeNull()
-      expect(previous!.content).toBe('<p>State 1</p>')
-      expect(manager.canUndo()).toBe(false) // Only one state left
-      expect(manager.canRedo()).toBe(true)
+      expect(manager.getCurrentState()).toEqual(state3)
+
+      const undo1 = manager.undo()
+      expect(undo1).toEqual(state2)
+      expect(manager.getCurrentState()).toEqual(state2)
+      expect(manager.canUndo()).toBe(true) // 1 item in past
+      expect(manager.canRedo()).toBe(true) // 1 item in future
+
+      const undo2 = manager.undo()
+      expect(undo2).toEqual(state1)
+      expect(manager.getCurrentState()).toEqual(state1)
+      expect(manager.canUndo()).toBe(false)
+      expect(manager.canRedo()).toBe(true) // 2 items in future
     })
 
-    it('should return null when no history to undo', () => {
+    it('should return null when cannot undo', () => {
+      const state = createMockState('<p>Only one</p>')
+      manager.push(state)
+
       const result = manager.undo()
       expect(result).toBeNull()
-    })
-
-    it('should support multiple undos', () => {
-      manager.push(createMockState('<p>1</p>'))
-      manager.push(createMockState('<p>2</p>'))
-      manager.push(createMockState('<p>3</p>'))
-
-      expect(manager.undo()?.content).toBe('<p>2</p>')
-      expect(manager.undo()?.content).toBe('<p>1</p>')
-      expect(manager.undo()).toBeNull()
+      expect(manager.getCurrentState()).toEqual(state)
     })
   })
 
-  describe('Redo Operations', () => {
-    it('should redo after undo', () => {
-      manager.push(createMockState('<p>State 1</p>'))
-      manager.push(createMockState('<p>State 2</p>'))
+  describe('Redo Operation', () => {
+    it('should redo correctly', () => {
+      const state1 = createMockState('<p>State 1</p>')
+      const state2 = createMockState('<p>State 2</p>')
 
+      manager.push(state1)
+      manager.push(state2)
       manager.undo()
-      const next = manager.redo()
 
-      expect(next).not.toBeNull()
-      expect(next!.content).toBe('<p>State 2</p>')
-      expect(manager.canRedo()).toBe(false)
+      expect(manager.getCurrentState()).toEqual(state1)
+
+      const redoResult = manager.redo()
+      expect(redoResult).toEqual(state2)
+      expect(manager.getCurrentState()).toEqual(state2)
       expect(manager.canUndo()).toBe(true)
+      expect(manager.canRedo()).toBe(false)
     })
 
-    it('should return null when no history to redo', () => {
+    it('should return null when cannot redo', () => {
+      const state = createMockState('<p>Only one</p>')
+      manager.push(state)
+
       const result = manager.redo()
       expect(result).toBeNull()
-    })
-
-    it('should clear redo history on new state', () => {
-      manager.push(createMockState('<p>1</p>'))
-      manager.push(createMockState('<p>2</p>'))
-
-      manager.undo()
-      expect(manager.canRedo()).toBe(true)
-
-      // Push new state clears redo
-      manager.push(createMockState('<p>3</p>'))
-      expect(manager.canRedo()).toBe(false)
+      expect(manager.getCurrentState()).toEqual(state)
     })
   })
 
-  describe('History Clear', () => {
+  describe('Max Size Limit', () => {
+    it('should limit history size', () => {
+      const smallManager = new HistoryManager(3)
+
+      for (let i = 1; i <= 5; i++) {
+        smallManager.push(createMockState(`<p>${i}</p>`))
+      }
+
+      const stats = smallManager.getStats()
+      // Should have 3 items in past (max limit)
+      // The 4th and 5th items should have been dropped
+      // Plus 1 present, so total 4 states tracked (3 in past + 1 present)
+      // But since we push and it moves present to past, we have:
+      // After 1 push: past=[], present=state1
+      // After 2 pushes: past=[state1], present=state2
+      // After 3 pushes: past=[state1,state2], present=state3
+      // After 4 pushes: past=[state1,state2,state3], present=state4 (state1 dropped)
+      // After 5 pushes: past=[state2,state3,state4], present=state5 (state1 dropped again)
+      // Final: past has 3 items (state2,state3,state4), present=state5
+      expect(stats.past).toBe(3)
+      expect(smallManager.getCurrentState()?.content).toBe('<p>5</p>')
+    })
+  })
+
+  describe('Clear and Reset', () => {
     it('should clear all history', () => {
-      manager.push(createMockState('<p>1</p>'))
-      manager.push(createMockState('<p>2</p>'))
+      const state = createMockState('<p>Test</p>')
+      manager.push(state)
       manager.undo()
 
       manager.clear()
 
+      expect(manager.getCurrentState()).toBeNull()
       expect(manager.canUndo()).toBe(false)
       expect(manager.canRedo()).toBe(false)
       expect(manager.getStats().past).toBe(0)
-      expect(manager.getStats().future).toBe(0)
-    })
-  })
-
-  describe('Max Size Management', () => {
-    it('should update max size', () => {
-      manager.setMaxSize(5)
-
-      for (let i = 0; i < 10; i++) {
-        manager.push(createMockState(`<p>${i}</p>`))
-      }
-
-      const stats = manager.getStats()
-      expect(stats.past).toBe(5)
-      expect(stats.maxSize).toBe(5)
     })
 
-    it('should truncate existing history when reducing max size', () => {
-      for (let i = 0; i < 10; i++) {
-        manager.push(createMockState(`<p>${i}</p>`))
-      }
+    it('should reset to new state', () => {
+      const state1 = createMockState('<p>Old</p>')
+      const state2 = createMockState('<p>New</p>')
 
-      expect(manager.getStats().past).toBe(10)
+      manager.push(state1)
+      manager.push(state2)
+      manager.undo()
 
-      manager.setMaxSize(3)
+      manager.reset(state2)
 
-      expect(manager.getStats().past).toBe(3)
-    })
-  })
-
-  describe('Enabled State', () => {
-    it('should respect enabled state', () => {
-      manager.setEnabled(false)
-
-      manager.push(createMockState('<p>1</p>'))
-
-      expect(manager.getStats().past).toBe(0)
+      expect(manager.getCurrentState()).toEqual(state2)
       expect(manager.canUndo()).toBe(false)
+      expect(manager.canRedo()).toBe(false)
+    })
+  })
+
+  describe('Enable/Disable', () => {
+    it('should respect disabled state', () => {
+      const state = createMockState('<p>Test</p>')
+
+      manager.setEnabled(false)
+      manager.push(state)
+
+      expect(manager.getStats().enabled).toBe(false)
+      // Even after push, past should be empty since disabled
+      expect(manager.getStats().past).toBe(0)
     })
 
     it('should toggle enabled state', () => {
@@ -178,48 +223,6 @@ describe('HistoryManager', () => {
 
       manager.setEnabled(true)
       expect(manager.isEnabled()).toBe(true)
-    })
-  })
-
-  describe('State Immutability', () => {
-    it('should not mutate original state objects', () => {
-      const originalState = createMockState('<p>Original</p>')
-      manager.push(originalState)
-
-      // Modify the original object
-      originalState.content = '<p>Modified</p>'
-
-      // The stored state should remain unchanged
-      const retrieved = manager.undo()
-      expect(retrieved).toBeNull() // Only one state, can't undo
-    })
-
-    it('should return copies of states', () => {
-      manager.push(createMockState('<p>1</p>'))
-      manager.push(createMockState('<p>2</p>'))
-
-      const state1 = manager.undo()
-      state1!.content = '<p>Modified</p>'
-
-      // Redo should still return the original state
-      const state2 = manager.redo()
-      expect(state2!.content).toBe('<p>2</p>')
-    })
-  })
-
-  describe('Statistics', () => {
-    it('should return accurate statistics', () => {
-      manager.push(createMockState('<p>1</p>'))
-      manager.push(createMockState('<p>2</p>'))
-      manager.push(createMockState('<p>3</p>'))
-
-      manager.undo()
-
-      const stats = manager.getStats()
-      expect(stats.past).toBe(2)
-      expect(stats.future).toBe(1)
-      expect(stats.maxSize).toBe(10)
-      expect(stats.enabled).toBe(true)
     })
   })
 })

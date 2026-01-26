@@ -1,7 +1,10 @@
 /**
  * HistoryManager - 编辑器历史管理器
  *
- * 负责管理编辑器的撤销/重做历史
+ * 重新设计以匹配原始 useHistory 的语义：
+ * - past: 历史状态数组（不包含当前状态）
+ * - present: 当前状态
+ * - future: 重做状态数组
  */
 
 import type { EditorState } from '../types'
@@ -19,6 +22,7 @@ interface HistoryItem {
  */
 export class HistoryManager {
   private past: HistoryItem[] = []
+  private present: HistoryItem | null = null
   private future: HistoryItem[] = []
   private maxSize: number
   private enabled: boolean = true
@@ -28,27 +32,56 @@ export class HistoryManager {
   }
 
   /**
-   * 保存当前状态到历史
-   * @param state 当前状态
+   * 初始化当前状态
+   * @param state 初始状态
+   */
+  initialize(state: EditorState): void {
+    const stateCopy: EditorState = JSON.parse(JSON.stringify(state))
+    this.present = {
+      state: stateCopy,
+      timestamp: Date.now()
+    }
+  }
+
+  /**
+   * 获取当前状态
+   */
+  getCurrentState(): EditorState | null {
+    return this.present ? JSON.parse(JSON.stringify(this.present.state)) : null
+  }
+
+  /**
+   * 保存新状态到历史
+   * @param state 新状态
    */
   push(state: EditorState): void {
     if (!this.enabled) return
 
+    // 如果还没有 present，直接初始化
+    if (!this.present) {
+      this.initialize(state)
+      return
+    }
+
     // 深拷贝状态
     const stateCopy: EditorState = JSON.parse(JSON.stringify(state))
 
-    this.past.push({
+    // 将当前 present 移入 past
+    this.past.push(this.present)
+
+    // 设置新的 present
+    this.present = {
       state: stateCopy,
       timestamp: Date.now()
-    })
+    }
+
+    // 清空 future
+    this.future = []
 
     // 限制历史大小
     if (this.past.length > this.maxSize) {
-      this.past.shift()
+      this.past.shift() // 移除最旧的
     }
-
-    // 清空 redo 历史
-    this.future = []
   }
 
   /**
@@ -56,16 +89,19 @@ export class HistoryManager {
    * @returns 撤销后的状态，如果没有可撤销的历史则返回 null
    */
   undo(): EditorState | null {
-    if (!this.enabled || this.past.length <= 1) return null
+    if (!this.enabled || this.past.length === 0 || !this.present) {
+      return null
+    }
 
-    // 取出当前状态
-    const current = this.past.pop()!
-    // 放入 future
-    this.future.push(current)
+    // 将当前 present 移入 future
+    this.future.unshift(this.present)
 
-    // 返回上一个状态
-    const previous = this.past[this.past.length - 1]
-    return previous ? JSON.parse(JSON.stringify(previous.state)) : null
+    // 从 past 中取出上一个作为新的 present
+    const previous = this.past.pop()!
+
+    this.present = previous
+
+    return JSON.parse(JSON.stringify(this.present.state))
   }
 
   /**
@@ -73,22 +109,31 @@ export class HistoryManager {
    * @returns 重做后的状态，如果没有可重做的历史则返回 null
    */
   redo(): EditorState | null {
-    if (!this.enabled || this.future.length === 0) return null
+    if (!this.enabled || this.future.length === 0 || !this.present) {
+      return null
+    }
 
-    // 取出要重做的状态
-    const next = this.future.pop()!
+    // 将当前 present 移入 past
+    this.past.push(this.present)
 
-    // 放入 past
-    this.past.push(next)
+    // 从 future 中取出下一个作为新的 present
+    const next = this.future.shift()!
 
-    return JSON.parse(JSON.stringify(next.state))
+    this.present = next
+
+    // 限制历史大小
+    if (this.past.length > this.maxSize) {
+      this.past.shift()
+    }
+
+    return JSON.parse(JSON.stringify(this.present.state))
   }
 
   /**
    * 检查是否可以撤销
    */
   canUndo(): boolean {
-    return this.enabled && this.past.length > 1
+    return this.enabled && this.past.length > 0
   }
 
   /**
@@ -103,7 +148,17 @@ export class HistoryManager {
    */
   clear(): void {
     this.past = []
+    this.present = null
     this.future = []
+  }
+
+  /**
+   * 重置到指定状态
+   * @param state 新的初始状态
+   */
+  reset(state: EditorState): void {
+    this.clear()
+    this.initialize(state)
   }
 
   /**
@@ -112,7 +167,8 @@ export class HistoryManager {
    */
   setMaxSize(size: number): void {
     this.maxSize = size
-    // 如果当前历史超过新的大小，截断
+
+    // 如果 past 超过新的大小，截断
     while (this.past.length > size) {
       this.past.shift()
     }
@@ -141,7 +197,8 @@ export class HistoryManager {
       past: this.past.length,
       future: this.future.length,
       maxSize: this.maxSize,
-      enabled: this.enabled
+      enabled: this.enabled,
+      hasPresent: this.present !== null
     }
   }
 }

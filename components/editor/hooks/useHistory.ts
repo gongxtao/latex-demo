@@ -1,4 +1,6 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
+import { HistoryManager } from '@/lib/editor-core'
+import type { EditorState } from '@/lib/editor-core'
 import { FloatingImageItem } from '../FloatingImageLayer'
 
 interface HistoryState {
@@ -7,108 +9,154 @@ interface HistoryState {
   timestamp: number
 }
 
-interface HistoryStore {
-  past: HistoryState[]
-  present: HistoryState
-  future: HistoryState[]
+/**
+ * 将 hook 的状态格式转换为 EditorState 格式
+ */
+function toEditorState(state: HistoryState): EditorState {
+  return {
+    content: state.html,
+    floatingImages: state.floatingImages,
+    isEditing: false,
+    readonly: false,
+    selection: null,
+    selectedImage: null,
+    selectedFloatingImageId: null,
+    activeTable: null,
+    toolbarVisible: true,
+    sidebarVisible: false
+  }
 }
 
 /**
- * useHistory Hook - 保留原始实现，稍后进行渐进式重构
+ * 将 EditorState 格式转换回 hook 的状态格式
+ */
+function fromEditorState(state: EditorState): HistoryState {
+  return {
+    html: state.content,
+    floatingImages: state.floatingImages,
+    timestamp: Date.now()
+  }
+}
+
+/**
+ * 比较两个 HistoryState 是否相等（用于避免重复 push）
+ */
+function isStateEqual(a: HistoryState, b: HistoryState): boolean {
+  return (
+    a.html === b.html &&
+    a.floatingImages.length === b.floatingImages.length &&
+    a.floatingImages.every((img, i) =>
+      img.id === b.floatingImages[i]?.id &&
+      img.src === b.floatingImages[i]?.src &&
+      img.x === b.floatingImages[i]?.x &&
+      img.y === b.floatingImages[i]?.y &&
+      img.width === b.floatingImages[i]?.width &&
+      img.height === b.floatingImages[i]?.height
+    )
+  )
+}
+
+/**
+ * useHistory Hook - 已迁移到使用 HistoryManager
  *
- * 注：由于 HistoryManager 的语义与原始实现不同，
- * 暂时保留原始实现，后续统一核心引擎后再迁移
+ * 使用新的核心引擎进行历史管理，同时保持原有 API 不变
  */
 export default function useHistory(initialState: { html: string; floatingImages: FloatingImageItem[] }) {
-  const historyRef = useRef<HistoryStore>({
-    past: [],
-    present: { html: initialState.html, floatingImages: initialState.floatingImages, timestamp: Date.now() },
-    future: []
-  })
+  // 使用 useRef 保持 HistoryManager 实例在重新渲染之间保持不变
+  const managerRef = useRef<HistoryManager | null>(null)
 
-  // Force update to trigger re-renders when history changes (for UI buttons)
+  // 创建并初始化 HistoryManager
+  if (!managerRef.current) {
+    managerRef.current = new HistoryManager(50)
+    const initialEditorState = toEditorState({
+      html: initialState.html,
+      floatingImages: initialState.floatingImages,
+      timestamp: Date.now()
+    })
+    managerRef.current.initialize(initialEditorState)
+  }
+
+  // Force update to trigger re-renders when history changes
   const [, forceUpdate] = useState({})
 
   const push = useCallback((nextState: { html: string; floatingImages: FloatingImageItem[] }) => {
-    const { past, present } = historyRef.current
+    const manager = managerRef.current
+    if (!manager) return
 
-    // Avoid pushing identical content
-    if (present.html === nextState.html &&
-        present.floatingImages.length === nextState.floatingImages.length &&
-        present.floatingImages.every((img, i) =>
-          img.id === nextState.floatingImages[i]?.id &&
-          img.src === nextState.floatingImages[i]?.src &&
-          img.x === nextState.floatingImages[i]?.x &&
-          img.y === nextState.floatingImages[i]?.y &&
-          img.width === nextState.floatingImages[i]?.width &&
-          img.height === nextState.floatingImages[i]?.height
-        )) {
+    const current = manager.getCurrentState()
+    if (!current) return
+
+    // 转换当前状态为 hook 格式进行比较
+    const currentHookState: HistoryState = {
+      html: current.content,
+      floatingImages: current.floatingImages,
+      timestamp: Date.now()
+    }
+
+    // 避免推送相同内容
+    if (isStateEqual(currentHookState, nextState)) {
       return
     }
 
-    const newPast = [...past, present]
-    if (newPast.length > 50) {
-      newPast.shift() // Remove oldest
-    }
+    const nextEditorState = toEditorState({
+      html: nextState.html,
+      floatingImages: nextState.floatingImages,
+      timestamp: Date.now()
+    })
 
-    historyRef.current = {
-      past: newPast,
-      present: { html: nextState.html, floatingImages: nextState.floatingImages, timestamp: Date.now() },
-      future: []
-    }
+    manager.push(nextEditorState)
     forceUpdate({})
   }, [])
 
   const undo = useCallback(() => {
-    const { past, present, future } = historyRef.current
-    if (past.length === 0) return null
+    const manager = managerRef.current
+    if (!manager) return null
 
-    const previous = past[past.length - 1]
-    const newPast = past.slice(0, past.length - 1)
+    const previous = manager.undo()
+    if (!previous) return null
 
-    historyRef.current = {
-      past: newPast,
-      present: previous,
-      future: [present, ...future]
-    }
     forceUpdate({})
-
-    return previous
+    return fromEditorState(previous)
   }, [])
 
   const redo = useCallback(() => {
-    const { past, present, future } = historyRef.current
-    if (future.length === 0) return null
+    const manager = managerRef.current
+    if (!manager) return null
 
-    const next = future[0]
-    const newFuture = future.slice(1)
+    const next = manager.redo()
+    if (!next) return null
 
-    historyRef.current = {
-      past: [...past, present],
-      present: next,
-      future: newFuture
-    }
     forceUpdate({})
-
-    return next
+    return fromEditorState(next)
   }, [])
 
   const reset = useCallback((nextState: { html: string; floatingImages: FloatingImageItem[] }) => {
-    historyRef.current = {
-      past: [],
-      present: { html: nextState.html, floatingImages: nextState.floatingImages, timestamp: Date.now() },
-      future: []
-    }
+    const manager = managerRef.current
+    if (!manager) return
+
+    const nextEditorState = toEditorState({
+      html: nextState.html,
+      floatingImages: nextState.floatingImages,
+      timestamp: Date.now()
+    })
+    manager.reset(nextEditorState)
     forceUpdate({})
   }, [])
+
+  const current = (() => {
+    const manager = managerRef.current
+    if (!manager) return null
+    const state = manager.getCurrentState()
+    return state ? fromEditorState(state) : null
+  })()
 
   return {
     push,
     undo,
     redo,
     reset,
-    canUndo: historyRef.current.past.length > 0,
-    canRedo: historyRef.current.future.length > 0,
-    current: historyRef.current.present
+    canUndo: managerRef.current?.canUndo() ?? false,
+    canRedo: managerRef.current?.canRedo() ?? false,
+    current
   }
 }

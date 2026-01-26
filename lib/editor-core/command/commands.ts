@@ -7,6 +7,64 @@
 import { CommandManager } from './CommandManager'
 
 /**
+ * Apply custom style to selection
+ */
+function applyStyle(doc: Document, styleName: string, styleValue: string): void {
+  const selection = doc.getSelection()
+  if (!selection || selection.rangeCount === 0) return
+
+  const range = selection.getRangeAt(0)
+  const span = doc.createElement('span')
+  span.style[styleName as any] = styleValue
+
+  if (selection.isCollapsed) {
+    const textNode = doc.createTextNode('\u200B')
+    span.appendChild(textNode)
+    range.insertNode(span)
+    const newRange = doc.createRange()
+    newRange.setStart(textNode, 1)
+    newRange.setEnd(textNode, 1)
+    selection.removeAllRanges()
+    selection.addRange(newRange)
+    return
+  }
+
+  const fragment = range.extractContents()
+  span.appendChild(fragment)
+  range.insertNode(span)
+  selection.removeAllRanges()
+  const newRange = doc.createRange()
+  newRange.selectNodeContents(span)
+  selection.addRange(newRange)
+}
+
+/**
+ * Apply line height to block element
+ */
+function applyLineHeight(doc: Document, value: string): void {
+  const selection = doc.getSelection()
+  if (!selection || selection.rangeCount === 0) return
+
+  let node = selection.anchorNode
+  // If node is text node, get parent
+  if (node && node.nodeType === 3) {
+    node = node.parentNode
+  }
+
+  // Traverse up to find a block element
+  while (node && node !== doc.body) {
+    const el = node as HTMLElement
+    const display = typeof window !== 'undefined' ? window.getComputedStyle(el).display : 'block'
+
+    if (['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'BLOCKQUOTE'].includes(el.nodeName) || display === 'block') {
+      el.style.lineHeight = value
+      break
+    }
+    node = node.parentNode
+  }
+}
+
+/**
  * 在指定文档中插入节点到当前选择位置
  */
 function insertNodeAtSelection(doc: Document, node: Node): void {
@@ -183,4 +241,12 @@ export function registerBuiltinCommands(manager: CommandManager): void {
       }
     }
   }
+
+  // ============================================================================
+  // Custom Style Commands
+  // ============================================================================
+
+  manager.register('fontFamily', (doc, name: string) => applyStyle(doc, 'fontFamily', name))
+  manager.register('fontSize', (doc, size: string) => applyStyle(doc, 'fontSize', size))
+  manager.register('lineHeight', (doc, value: string) => applyLineHeight(doc, value))
 }

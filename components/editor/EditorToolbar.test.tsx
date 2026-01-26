@@ -7,7 +7,7 @@ import EditorToolbar from './EditorToolbar'
 jest.mock('./toolbar/core/ButtonRenderer', () => {
   return function MockButtonRenderer(props: any) {
     return (
-      <button 
+      <button
         data-testid={`btn-${props.config.id}`}
         onClick={() => {
           if (props.config.type === 'command' || props.config.type === 'toggle') {
@@ -25,20 +25,18 @@ jest.mock('./toolbar/core/ButtonRenderer', () => {
   }
 })
 
-// Mock hooks
-const mockCommands = {
-  bold: jest.fn(),
-  italic: jest.fn(),
-  fontSize: jest.fn(),
-  fontFamily: jest.fn(),
-  formatBlock: jest.fn(),
-  insertImage: jest.fn(),
-  insertTable: jest.fn()
-}
-
-jest.mock('./toolbar/hooks/useEditorCommands', () => ({
-  useEditorCommands: () => ({
-    commands: mockCommands
+// Mock useEditorState (kept for querying DOM state)
+jest.mock('./toolbar/hooks/useEditorState', () => ({
+  useEditorState: () => ({
+    editorState: {
+      isBold: true, // Simulate bold is active
+      isItalic: false,
+      fontName: 'Arial',
+      fontSize: '16px',
+      formatBlock: 'p',
+      align: 'left'
+    },
+    checkState: jest.fn()
   })
 }))
 
@@ -57,11 +55,35 @@ jest.mock('./toolbar/hooks/useEditorState', () => ({
 }))
 
 describe('EditorToolbar Integration', () => {
+  // Create a mock iframe with proper document structure
+  const createMockIframe = () => {
+    const iframe = document.createElement('iframe')
+    document.body.appendChild(iframe)
+    const doc = iframe.contentDocument || iframe.contentWindow?.document
+    if (doc) {
+      doc.open()
+      doc.write('<html><body><p>Test content</p></body></html>')
+      doc.close()
+      // Mock execCommand for jsdom environment
+      doc.execCommand = jest.fn(() => true)
+      doc.queryCommandState = jest.fn(() => false)
+      doc.queryCommandValue = jest.fn(() => '')
+    }
+    return iframe
+  }
+
   const defaultProps = {
-    iframeRef: { current: document.createElement('iframe') },
+    iframeRef: { current: createMockIframe() },
     onContentChange: jest.fn(),
     isEditing: true
   }
+
+  afterEach(() => {
+    // Clean up iframe
+    if (defaultProps.iframeRef.current && defaultProps.iframeRef.current.parentNode) {
+      defaultProps.iframeRef.current.parentNode.removeChild(defaultProps.iframeRef.current)
+    }
+  })
 
   beforeEach(() => {
     jest.clearAllMocks()
@@ -94,27 +116,25 @@ describe('EditorToolbar Integration', () => {
   })
 
   it('executes commands when buttons are clicked', () => {
-    render(<EditorToolbar {...defaultProps} />)
+    const mockOnContentChange = jest.fn()
+    const props = { ...defaultProps, onContentChange: mockOnContentChange }
 
-    // Click bold
+    render(<EditorToolbar {...props} />)
+
+    // Click bold button - should call onContentChange with new HTML
     fireEvent.click(screen.getByTestId('btn-format-bold'))
-    expect(mockCommands.bold).toHaveBeenCalled()
+    expect(mockOnContentChange).toHaveBeenCalled()
 
-    // Click font family (mock simulates selecting 'new-value')
+    // Click font family - should also trigger change
+    mockOnContentChange.mockClear()
     fireEvent.click(screen.getByTestId('btn-font-family'))
-    expect(mockCommands.fontFamily).toHaveBeenCalledWith('new-value')
+    expect(mockOnContentChange).toHaveBeenCalled()
   })
 
   it('disables buttons when not editing', () => {
-    // Note: ButtonRenderer implementation handles disabled prop
-    // In our mock we verify the prop is passed
-    // But since we mocked ButtonRenderer, we can check if it received disabled prop
-    // However, the test-renderer doesn't easily expose props of mocked components
-    // So we rely on the fact that EditorToolbar passes `disabled={!isEditing}`
-
     const { rerender } = render(<EditorToolbar {...defaultProps} isEditing={false} />)
 
-    // In a real integration test with full rendering, we would check the disabled attribute
-    // Here we trust the prop passing logic which is simple: disabled = props.disabled || !isEditing
+    // The component should render without errors when not editing
+    expect(screen.getByTestId('btn-format-bold')).toBeInTheDocument()
   })
 })
