@@ -472,7 +472,7 @@ describe('EditablePreview', () => {
    * SCENARIO 9: Image Paste Handling
    */
   describe('Scenario 9: Image Paste Handling', () => {
-    it('should insert pasted image under 5MB', async () => {
+    it('should insert pasted image under 10MB', async () => {
       const props = createMockProps({ initialEditing: true })
       const { container } = render(<EditablePreview {...props} />)
 
@@ -507,7 +507,7 @@ describe('EditablePreview', () => {
       }
     })
 
-    it('should reject pasted image over 5MB', async () => {
+    it('should reject pasted image over 10MB', async () => {
       const props = createMockProps({ initialEditing: true })
       const { container } = render(<EditablePreview {...props} />)
 
@@ -517,8 +517,8 @@ describe('EditablePreview', () => {
       const iframeDoc = iframe?.contentDocument
 
       if (iframeDoc) {
-        // Create a large image file (6MB)
-        const largeBlob = new Blob(['x'.repeat(6 * 1024 * 1024)], { type: 'image/png' })
+        // Create a large image file (11MB)
+        const largeBlob = new Blob(['x'.repeat(11 * 1024 * 1024)], { type: 'image/png' })
         const file = new File([largeBlob], 'large.png', { type: 'image/png' })
 
         const clipboardData = {
@@ -538,7 +538,7 @@ describe('EditablePreview', () => {
         })
 
         // Should show alert
-        expect(global.alert).toHaveBeenCalledWith('粘贴失败：图片超过5MB，请压缩后重试')
+        expect(global.alert).toHaveBeenCalledWith('粘贴失败：图片超过10MB，请压缩后重试')
       }
     })
   })

@@ -151,10 +151,10 @@ export class ConfigManager {
 
     // 找出变化的键
     const changes: Array<{ key: keyof EditorConfig; newValue: any; oldValue: any }> = []
-    for (const key in config) {
+    for (const key of Object.keys(config) as Array<keyof EditorConfig>) {
       if (config[key] !== undefined) {
         changes.push({
-          key: key as keyof EditorConfig,
+          key,
           newValue: merged[key],
           oldValue: this.config[key]
         })

@@ -223,7 +223,7 @@ describe('ImageResizer', () => {
    */
   describe('Scenario 3: Resize Interaction', () => {
     const simulateDrag = async (
-      handle: HTMLElement,
+      handle: Element,
       dx: number,
       dy: number
     ) => {
@@ -352,7 +352,7 @@ describe('ImageResizer', () => {
    */
   describe('Scenario 4: Aspect Ratio Preservation', () => {
     const simulateDrag = async (
-      handle: HTMLElement,
+      handle: Element,
       dx: number,
       dy: number
     ) => {
@@ -433,7 +433,7 @@ describe('ImageResizer', () => {
    */
   describe('Scenario 5: Minimum Size Constraints', () => {
     const simulateDrag = async (
-      handle: HTMLElement,
+      handle: Element,
       dx: number,
       dy: number
     ) => {
@@ -630,7 +630,7 @@ describe('ImageResizer', () => {
    */
   describe('Scenario 7: Callbacks and Cleanup', () => {
     const simulateDrag = async (
-      handle: HTMLElement,
+      handle: Element,
       dx: number,
       dy: number
     ) => {
@@ -1030,7 +1030,7 @@ describe('ImageResizer', () => {
    */
   describe('Integration Tests', () => {
     const simulateDrag = async (
-      handle: HTMLElement,
+      handle: Element,
       dx: number,
       dy: number
     ) => {

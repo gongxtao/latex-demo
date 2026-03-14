@@ -53,9 +53,7 @@ const createIframeWithTable = (fixture: TableFixture) => {
 
 // Helper to mock getBoundingClientRect
 const mockTableBounds = (table: HTMLTableElement, bounds: Partial<DOMRect>) => {
-  const originalGetBoundingClientRect = table.getBoundingClientRect
-
-  jest.spyOn(table, 'getBoundingClientRect').mockReturnValue({
+  const tableBoundsSpy = jest.spyOn(table, 'getBoundingClientRect').mockReturnValue({
     x: bounds.x || 0,
     y: bounds.y || 0,
     width: bounds.width || 400,
@@ -82,7 +80,7 @@ const mockTableBounds = (table: HTMLTableElement, bounds: Partial<DOMRect>) => {
     } as DOMRect)
   })
 
-  return originalGetBoundingClientRect
+  return tableBoundsSpy
 }
 
 // Helper function to render the component

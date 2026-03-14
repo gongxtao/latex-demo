@@ -80,5 +80,5 @@ export const TABLE_MAX_ROWS = 10
 export const TABLE_MAX_COLS = 10
 
 // Image file constraints
-export const IMAGE_MAX_SIZE_MB = 5
+export const IMAGE_MAX_SIZE_MB = 10
 export const IMAGE_MAX_SIZE_BYTES = IMAGE_MAX_SIZE_MB * 1024 * 1024

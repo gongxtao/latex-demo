@@ -105,7 +105,8 @@ test.describe('EditablePreview E2E Tests', () => {
       const p = document.querySelector('p')
       if (p && p.firstChild) {
         const range = document.createRange()
-        range.setStart(p.firstChild, p.firstChild.length)
+        const textNode = p.firstChild as Text
+        range.setStart(textNode, textNode.length)
         range.collapse(true)
         const selection = window.getSelection()
         if (selection) {
@@ -348,7 +349,7 @@ test.describe('EditablePreview E2E Tests', () => {
 
     const result = await frameLocator.evaluate(() => {
       try {
-        return document.execCommand('bold', false, null)
+        return document.execCommand('bold', false, undefined)
       } catch {
         return false
       }

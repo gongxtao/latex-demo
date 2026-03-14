@@ -50,13 +50,14 @@ const INITIAL_STATE: EditorState = {
 
 interface UseEditorStateProps {
   iframeRef: React.RefObject<HTMLIFrameElement>
+  refreshToken?: number
 }
 
 /**
  * Hook to track and synchronize editor state
  * Listens to selection changes and updates the state accordingly
  */
-export const useEditorState = ({ iframeRef }: UseEditorStateProps) => {
+export const useEditorState = ({ iframeRef, refreshToken = 0 }: UseEditorStateProps) => {
   const [editorState, setEditorState] = useState<EditorState>(INITIAL_STATE)
 
   /**
@@ -209,7 +210,7 @@ export const useEditorState = ({ iframeRef }: UseEditorStateProps) => {
         iframe.removeEventListener('load', handleLoad)
       }
     }
-  }, [iframeRef, checkState])
+  }, [iframeRef, checkState, refreshToken])
 
   return {
     editorState,

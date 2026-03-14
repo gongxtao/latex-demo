@@ -17,13 +17,14 @@ export interface UseDropdownStateOptions {
 export function useDropdownState(options: UseDropdownStateOptions = {}) {
   const { initialOpen = false, onStateChange, containerRef } = options
   const [isOpen, setIsOpen] = useState(initialOpen)
+  const hasInitialOpen = Object.prototype.hasOwnProperty.call(options, 'initialOpen')
 
   // Update state when controlled externally
   useEffect(() => {
-    if (initialOpen !== undefined && initialOpen !== isOpen) {
-      setIsOpen(initialOpen)
+    if (hasInitialOpen) {
+      setIsOpen(prev => (prev === initialOpen ? prev : initialOpen))
     }
-  }, [initialOpen])
+  }, [hasInitialOpen, initialOpen])
 
   // Notify state change
   useEffect(() => {
@@ -35,7 +36,10 @@ export function useDropdownState(options: UseDropdownStateOptions = {}) {
     if (!isOpen || !containerRef) return
 
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      const isInsideContainer = !!(containerRef.current && containerRef.current.contains(target))
+      const isInsidePortal = target instanceof Element && !!target.closest('[data-toolbar-dropdown-portal="true"]')
+      if (!isInsideContainer && !isInsidePortal) {
         setIsOpen(false)
       }
     }

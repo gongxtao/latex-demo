@@ -4,6 +4,7 @@
 
 import type { CommandManager, StateManager, HistoryManager } from '..'
 import type { EventBus } from './EventBus'
+import type { ComponentType } from 'react'
 
 // ==================== 插件核心类型 ====================
 
@@ -86,7 +87,7 @@ export interface CommandExtension {
 export interface ToolbarButton {
   type: 'button'
   id: string
-  icon?: string | React.ComponentType
+  icon?: string | ComponentType
   label?: string
   tooltip?: string
   command: string

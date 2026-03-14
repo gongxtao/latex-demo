@@ -41,7 +41,10 @@ function fromEditorState(state: EditorState): HistoryState {
 /**
  * 比较两个 HistoryState 是否相等（用于避免重复 push）
  */
-function isStateEqual(a: HistoryState, b: HistoryState): boolean {
+function isStateEqual(
+  a: Pick<HistoryState, 'html' | 'floatingImages'>,
+  b: Pick<HistoryState, 'html' | 'floatingImages'>
+): boolean {
   return (
     a.html === b.html &&
     a.floatingImages.length === b.floatingImages.length &&

@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useDropdownState } from '../hooks/useDropdownState'
 import { ChevronDownIcon } from '../../icons'
@@ -38,7 +38,7 @@ const ToolbarDropdown: React.FC<ToolbarDropdownProps> = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const { isOpen, toggle, close, open } = useDropdownState({ containerRef })
   const [inputValue, setInputValue] = useState(value || '')
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 })
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null)
 
   // Update input value when prop value changes
   useEffect(() => {
@@ -47,14 +47,16 @@ const ToolbarDropdown: React.FC<ToolbarDropdownProps> = ({
     }
   }, [value])
 
-  // Calculate dropdown position when it opens
-  useEffect(() => {
+  // Calculate dropdown position before paint to avoid flicker at top-left
+  useLayoutEffect(() => {
     if (isOpen && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect()
       setDropdownPosition({
         top: rect.bottom + window.scrollY,
         left: rect.left + window.scrollX
       })
+    } else if (!isOpen) {
+      setDropdownPosition(null)
     }
   }, [isOpen])
 
@@ -96,10 +98,11 @@ const ToolbarDropdown: React.FC<ToolbarDropdownProps> = ({
 
   const dropdownContent = (
     <div
+      data-toolbar-dropdown-portal="true"
       className="origin-top-right absolute rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-[9999] max-h-60 overflow-y-auto"
       style={{
-        top: `${dropdownPosition.top}px`,
-        left: `${dropdownPosition.left}px`,
+        top: `${dropdownPosition?.top ?? 0}px`,
+        left: `${dropdownPosition?.left ?? 0}px`,
         minWidth: typeof width === 'number' ? `${Math.max(width, 100)}px` : width
       }}
       role="menu"
@@ -185,7 +188,7 @@ const ToolbarDropdown: React.FC<ToolbarDropdownProps> = ({
         </button>
       )}
 
-      {isOpen && !disabled && typeof document !== 'undefined' && createPortal(
+      {isOpen && !!dropdownPosition && !disabled && typeof document !== 'undefined' && createPortal(
         dropdownContent,
         document.body
       )}

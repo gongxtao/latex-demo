@@ -92,6 +92,11 @@ interface MutationObserver {
   observe(target: Node, options?: MutationObserverInit): void;
   disconnect(): void;
   takeRecords(): MutationRecord[];
+  trigger(): void;
+}
+
+declare module 'react' {
+  function createRef<T>(): MutableRefObject<T | null>;
 }
 
 export {};

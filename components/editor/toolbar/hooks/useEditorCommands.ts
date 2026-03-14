@@ -114,7 +114,15 @@ function applySavedStyles(doc: Document, commandManager: CommandManager, styles:
   }
 
   // Font Name
-  if (styles.fontName) commandManager.execute('fontName', doc, styles.fontName)
+  if (styles.fontName) {
+    const normalizedFontName = String(styles.fontName)
+      .split(',')[0]
+      .trim()
+      .replace(/^['"]|['"]$/g, '')
+    if (normalizedFontName) {
+      commandManager.execute('fontFamily', doc, normalizedFontName)
+    }
+  }
 
   // Font Size - use fontSize custom command
   if (styles.computedFontSize) {
@@ -150,11 +158,11 @@ export function useEditorCommands({
   const commandManager = commandManagerRef.current
 
   // Get the iframe document
-  const getIframeDoc = () => {
+  const getIframeDoc = useCallback(() => {
     return iframeRef.current?.contentDocument ||
       iframeRef.current?.contentWindow?.document ||
       null
-  }
+  }, [iframeRef])
 
   // Apply a format function to the editor
   const applyFormat = useCallback((fn: (doc: Document) => void) => {
@@ -305,10 +313,12 @@ export function useEditorCommands({
     const handleMouseUp = () => {
       const selection = doc.getSelection()
       if (selection && !selection.isCollapsed) {
-        // Apply styles and deactivate
-        applyFormat((doc) => applySavedStyles(doc, commandManager, savedStylesRef.current))
-        setIsFormatPainterActive(false)
-        savedStylesRef.current = {}
+        try {
+          applyFormat((doc) => applySavedStyles(doc, commandManager, savedStylesRef.current))
+        } finally {
+          setIsFormatPainterActive(false)
+          savedStylesRef.current = {}
+        }
       }
     }
 

@@ -478,7 +478,7 @@ describe('useEditorCommands', () => {
       mockSelection.addRange(newRange)
 
       // 设置isCollapsed为false以触发样式应用
-      mockSelection.isCollapsed = false
+      ;(mockSelection as any).isCollapsed = false
 
       // 触发mouseup事件以应用样式
       act(() => {
@@ -878,7 +878,7 @@ describe('useEditorCommands', () => {
 
       // Get mock selection and set isCollapsed to true
       const mockSelection = doc.getSelection()!
-      mockSelection.isCollapsed = true
+      ;(mockSelection as any).isCollapsed = true
 
       // Trigger mouseup event with collapsed selection
       act(() => {
@@ -888,6 +888,77 @@ describe('useEditorCommands', () => {
 
       // Format painter should remain active when selection is collapsed
       expect(result.current.isFormatPainterActive).toBe(true)
+    })
+
+    it('TC-EC-038: 捕获到 fontName 时应用格式不报错且自动关闭', async () => {
+      const iframeRef = { current: mockIframe }
+      const doc = mockIframe.contentDocument!
+
+      doc.queryCommandValue = jest.fn((cmd: string) => {
+        if (cmd === 'fontName') return '"Arial"'
+        if (cmd === 'foreColor') return 'rgb(255, 0, 0)'
+        return ''
+      })
+
+      const { result } = renderHook(() =>
+        useEditorCommands({
+          iframeRef,
+          onContentChange: mockOnContentChange,
+          isEditing: true,
+        })
+      )
+
+      act(() => {
+        result.current.commands.formatPainter()
+      })
+
+      const mockSelection = doc.getSelection()!
+      ;(mockSelection as any).isCollapsed = false
+
+      act(() => {
+        doc.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+      })
+
+      await waitFor(() => {
+        expect(result.current.isFormatPainterActive).toBe(false)
+      })
+      expect(mockOnContentChange).toHaveBeenCalled()
+    })
+
+    it('TC-EC-039: 格式刷单次生效，应用后再次选择不重复触发', async () => {
+      const iframeRef = { current: mockIframe }
+      const doc = mockIframe.contentDocument!
+
+      const { result } = renderHook(() =>
+        useEditorCommands({
+          iframeRef,
+          onContentChange: mockOnContentChange,
+          isEditing: true,
+        })
+      )
+
+      act(() => {
+        result.current.commands.formatPainter()
+      })
+
+      const mockSelection = doc.getSelection()!
+      ;(mockSelection as any).isCollapsed = false
+
+      act(() => {
+        doc.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+      })
+
+      await waitFor(() => {
+        expect(result.current.isFormatPainterActive).toBe(false)
+      })
+
+      const callCountAfterFirstApply = mockOnContentChange.mock.calls.length
+
+      act(() => {
+        doc.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+      })
+
+      expect(mockOnContentChange.mock.calls.length).toBe(callCountAfterFirstApply)
     })
   })
 
@@ -931,8 +1002,8 @@ describe('useEditorCommands', () => {
       const mockSelection = doc.getSelection()!
       mockSelection.removeAllRanges()
       mockSelection.addRange(range)
-      mockSelection.anchorNode = textNode
-      mockSelection.isCollapsed = false
+      ;(mockSelection as any).anchorNode = textNode
+      ;(mockSelection as any).isCollapsed = false
 
       const { result } = renderHook(() =>
         useEditorCommands({

@@ -2,6 +2,8 @@
  * Configuration System Type Definitions
  */
 
+import type { ComponentType } from 'react'
+
 // ==================== 编辑器配置类型 ====================
 
 /**
@@ -10,7 +12,7 @@
 export interface ToolbarButton {
   type: 'button'
   id: string
-  icon?: string | React.ComponentType
+  icon?: string | ComponentType
   label?: string
   tooltip?: string
   command: string

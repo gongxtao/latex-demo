@@ -37,7 +37,7 @@ export default function WangEditorPreview({ selectedFile, content, onContentChan
     } catch (e) {
       // ignore
     }
-  }, [containerSelector])
+  }, [containerSelector, content])
 
   const editorDefaultConfig = useMemo(() => ({
     placeholder: '在此编辑正文内容（不会修改全局结构与样式）',

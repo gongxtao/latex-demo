@@ -288,7 +288,7 @@ describe('Test Infrastructure Examples', () => {
 
       element.appendChild(document.createElement('span'));
 
-      observer.trigger();
+      (observer as any).trigger();
 
       // Wait for the setTimeout callback in trigger()
       await new Promise(resolve => setTimeout(resolve, 10));

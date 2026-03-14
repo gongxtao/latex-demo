@@ -6,7 +6,7 @@
 
 'use client'
 
-import React, { RefObject, useRef, useMemo } from 'react'
+import React, { RefObject, useRef, useMemo, useCallback } from 'react'
 
 // Core components
 import ToolbarRow from './toolbar/core/ToolbarRow'
@@ -58,6 +58,9 @@ export interface EditorToolbarProps {
   isEditing: boolean
   disabled?: boolean
   onFloatingImageInsert?: (imageUrl: string) => void
+  onUndo?: () => void
+  onRedo?: () => void
+  refreshToken?: number
 }
 
 /**
@@ -68,7 +71,10 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   onContentChange,
   isEditing,
   disabled: propsDisabled,
-  onFloatingImageInsert
+  onFloatingImageInsert,
+  onUndo,
+  onRedo,
+  refreshToken = 0
 }) => {
   // CommandManager - 直接使用核心引擎
   const commandManagerRef = useRef<CommandManager | null>(null)
@@ -120,18 +126,69 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const disabled = propsDisabled || !isEditing
 
   // 获取 iframe document
-  const getIframeDoc = () => {
+  const getIframeDoc = useCallback(() => {
     return iframeRef.current?.contentDocument ||
            iframeRef.current?.contentWindow?.document ||
            null
-  }
+  }, [iframeRef])
 
   // Use editor state hook - 保留用于查询格式状态
-  const { editorState } = useEditorState({ iframeRef })
+  const { editorState } = useEditorState({ iframeRef, refreshToken })
 
   // 格式刷状态 - 需要手动管理
   const [isFormatPainterActive, setIsFormatPainterActive] = React.useState(false)
   const savedStylesRef = useRef<Record<string, any>>({})
+  const savedSelectionRangeRef = useRef<Range | null>(null)
+
+  const captureSelectionRange = useCallback(() => {
+    const doc = getIframeDoc()
+    if (!doc) return
+    const selection = doc.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      savedSelectionRangeRef.current = selection.getRangeAt(0).cloneRange()
+    }
+  }, [getIframeDoc])
+
+  const restoreSelectionRange = useCallback((doc: Document) => {
+    const selection = doc.getSelection()
+    const savedRange = savedSelectionRangeRef.current
+    if (!selection || !savedRange) return
+    try {
+      selection.removeAllRanges()
+      selection.addRange(savedRange.cloneRange())
+    } catch (e) {
+    }
+  }, [])
+
+  const prepareEditorSelection = useCallback(() => {
+    const doc = getIframeDoc()
+    if (!doc) return null
+    iframeRef.current?.focus()
+    const selection = doc.getSelection()
+    if (!selection || selection.rangeCount === 0) {
+      restoreSelectionRange(doc)
+    }
+    return doc
+  }, [getIframeDoc, iframeRef, restoreSelectionRange])
+
+  React.useEffect(() => {
+    const doc = getIframeDoc()
+    if (!doc) return
+
+    const handleSelectionCapture = () => {
+      captureSelectionRange()
+    }
+
+    doc.addEventListener('selectionchange', handleSelectionCapture)
+    doc.addEventListener('mouseup', handleSelectionCapture)
+    doc.addEventListener('keyup', handleSelectionCapture)
+
+    return () => {
+      doc.removeEventListener('selectionchange', handleSelectionCapture)
+      doc.removeEventListener('mouseup', handleSelectionCapture)
+      doc.removeEventListener('keyup', handleSelectionCapture)
+    }
+  }, [captureSelectionRange, getIframeDoc, refreshToken])
 
   /**
    * 查询命令状态
@@ -199,7 +256,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   /**
    * 应用保存的样式（格式刷）
    */
-  const applySavedStyles = (doc: Document) => {
+  const applySavedStyles = useCallback((doc: Document) => {
     const styles = savedStylesRef.current
     if (!styles) return
 
@@ -233,7 +290,15 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
     }
 
     // Font Name
-    if (styles.fontName) commandManager.execute('fontName', doc, styles.fontName)
+    if (styles.fontName) {
+      const normalizedFontName = String(styles.fontName)
+        .split(',')[0]
+        .trim()
+        .replace(/^['"]|['"]$/g, '')
+      if (normalizedFontName) {
+        commandManager.execute('fontFamily', doc, normalizedFontName)
+      }
+    }
 
     // Font Size - use fontSize custom command
     if (styles.computedFontSize) {
@@ -246,7 +311,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
     if (styles.computedLineHeight && styles.computedLineHeight !== 'normal') {
       commandManager.execute('lineHeight', doc, styles.computedLineHeight)
     }
-  }
+  }, [commandManager])
 
   /**
    * 创建命令对象（映射到 CommandManager）
@@ -254,10 +319,18 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const commands = useMemo(() => ({
     // History
     undo: () => {
+      if (onUndo) {
+        onUndo()
+        return
+      }
       const doc = getIframeDoc()
       if (doc && commandManager) commandManager.execute('undo', doc)
     },
     redo: () => {
+      if (onRedo) {
+        onRedo()
+        return
+      }
       const doc = getIframeDoc()
       if (doc && commandManager) commandManager.execute('redo', doc)
     },
@@ -510,7 +583,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
         onContentChange(newHtml)
       }
     }
-  }), [commandManager, onContentChange, isFormatPainterActive])
+  }), [commandManager, onContentChange, isFormatPainterActive, getIframeDoc, onUndo, onRedo])
 
   // 格式刷自动应用逻辑
   React.useEffect(() => {
@@ -522,13 +595,14 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
     const handleMouseUp = () => {
       const selection = doc.getSelection()
       if (selection && !selection.isCollapsed) {
-        // Apply styles and deactivate
-        applySavedStyles(doc)
-        setIsFormatPainterActive(false)
-        savedStylesRef.current = {}
-        // 触发内容变化
-        const newHtml = doc.documentElement.outerHTML
-        onContentChange(newHtml)
+        try {
+          applySavedStyles(doc)
+          const newHtml = doc.documentElement.outerHTML
+          onContentChange(newHtml)
+        } finally {
+          setIsFormatPainterActive(false)
+          savedStylesRef.current = {}
+        }
       }
     }
 
@@ -536,7 +610,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
     return () => {
       doc.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isFormatPainterActive, onContentChange])
+  }, [isFormatPainterActive, onContentChange, applySavedStyles, getIframeDoc])
 
   // Helper to determine button state
   const getButtonState = (id: string): { isActive: boolean } => {
@@ -581,6 +655,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
   // Command handler
   const handleCommand = (command: string, arg?: string) => {
+    prepareEditorSelection()
     const cmd = commands[command as keyof typeof commands]
     if (typeof cmd === 'function') {
       if (arg !== undefined) {
@@ -606,6 +681,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
   // Image selection handler
   const handleImageSelect = (imageUrl: string) => {
+    prepareEditorSelection()
     commands.insertImage(imageUrl)
   }
 
@@ -620,6 +696,8 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
   // Select change handler (for heading format, font, size)
   const handleSelectChange = (id: string, value: string) => {
+    prepareEditorSelection()
+
     switch (id) {
       case 'font-family':
         commands.fontFamily(value)

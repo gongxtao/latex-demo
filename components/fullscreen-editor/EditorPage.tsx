@@ -22,11 +22,13 @@ export default function EditorPage() {
     setFloatingImages,
     selectedTemplate,
     setSelectedTemplate,
+    hasStorageError,
     clearAll
   } = useEditorStorage()
 
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
+  const [showStorageWarning, setShowStorageWarning] = useState(false)
 
   // Helper to get the iframe reference
   const getIframe = useCallback(() => {
@@ -48,15 +50,28 @@ export default function EditorPage() {
   // Auto-save to localStorage with debouncing
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (htmlContent) {
-        localStorage.setItem('editor-content', htmlContent)
+      if (hasStorageError) {
+        setSaveStatus('unsaved')
+      } else {
+        setSaveStatus('saved')
       }
-      localStorage.setItem('editor-floating-images', JSON.stringify(floatingImages))
-      setSaveStatus('saved')
     }, 1000)
 
     return () => clearTimeout(timer)
-  }, [htmlContent, floatingImages])
+  }, [hasStorageError, htmlContent, floatingImages])
+
+  useEffect(() => {
+    if (hasStorageError) {
+      setShowStorageWarning(true)
+      const timer = window.setTimeout(() => {
+        setShowStorageWarning(false)
+      }, 4000)
+      return () => {
+        window.clearTimeout(timer)
+      }
+    }
+    setShowStorageWarning(false)
+  }, [hasStorageError])
 
   const handleTemplateSelect = useCallback(async (templatePath: string) => {
     try {
@@ -224,6 +239,11 @@ export default function EditorPage() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
+      {showStorageWarning && (
+        <div className="fixed top-4 right-4 z-[10000] max-w-md rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-lg">
+          当前内容过大，浏览器本地存储空间不足。内容仍在当前页面中，可继续编辑并及时导出。
+        </div>
+      )}
       {/* Unified Toolbar with File Menu */}
       <UnifiedToolbar
         iframeRef={iframeRef}

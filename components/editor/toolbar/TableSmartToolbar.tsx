@@ -87,12 +87,12 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
     
     const iframe = iframeRef.current
     const win = iframe?.contentWindow
+    const handleWindowScroll = () => setContextMenu(null)
 
     if (win) {
         win.addEventListener('scroll', updateMetrics)
         win.addEventListener('resize', updateMetrics)
-        // Close menu on scroll
-        win.addEventListener('scroll', () => setContextMenu(null))
+        win.addEventListener('scroll', handleWindowScroll)
     }
     
     const observer = new MutationObserver(updateMetrics)
@@ -107,7 +107,7 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
         if (win) {
             win.removeEventListener('scroll', updateMetrics)
             win.removeEventListener('resize', updateMetrics)
-            win.removeEventListener('scroll', () => setContextMenu(null))
+            win.removeEventListener('scroll', handleWindowScroll)
         }
         observer.disconnect()
     }

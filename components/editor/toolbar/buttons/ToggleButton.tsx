@@ -41,6 +41,11 @@ const ToggleButton = React.forwardRef<HTMLButtonElement, ToggleButtonProps>(
         aria-label={label}
         aria-pressed={isActive}
         disabled={disabled}
+        onMouseDown={(e) => {
+          if (!disabled) {
+            e.preventDefault()
+          }
+        }}
         onClick={onClick}
         className={`
           transition-colors disabled:cursor-not-allowed disabled:opacity-50

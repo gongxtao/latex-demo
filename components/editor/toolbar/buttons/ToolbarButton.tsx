@@ -19,7 +19,7 @@ export interface ToolbarButtonProps extends ButtonHTMLAttributes<HTMLButtonEleme
 
 const ToolbarButton = memo(
   React.forwardRef<HTMLButtonElement, ToolbarButtonProps>(
-    ({ title, icon, variant = 'default', size = 'md', className = '', disabled, children, ...props }, ref) => {
+    ({ title, icon, variant = 'default', size = 'md', className = '', disabled, children, onMouseDown, ...props }, ref) => {
       const baseStyles = 'transition-colors disabled:cursor-not-allowed disabled:opacity-50'
 
       const variantStyles = {
@@ -46,6 +46,12 @@ const ToolbarButton = memo(
             ${sizeStyles[size]}
             ${className}
           `}
+          onMouseDown={(e) => {
+            if (!disabled) {
+              e.preventDefault()
+            }
+            onMouseDown?.(e)
+          }}
           {...props}
         >
           {icon || children}

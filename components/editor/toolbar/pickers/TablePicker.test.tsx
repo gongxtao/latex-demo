@@ -69,18 +69,6 @@ describe('TablePicker', () => {
       expect(cells.length).toBeGreaterThan(0)
     })
 
-    it('should display quick insert options', () => {
-      render(<TablePicker onTableSelect={mockOnTableSelect} />)
-
-      // Open the picker
-      fireEvent.click(screen.getByTitle('Insert table'))
-
-      // Check for quick insert options
-      expect(screen.getByText('2 × 2 table')).toBeInTheDocument()
-      expect(screen.getByText('3 × 3 table')).toBeInTheDocument()
-      expect(screen.getByText('2 × 3 table')).toBeInTheDocument()
-      expect(screen.getByText('3 × 2 table')).toBeInTheDocument()
-    })
   })
 
   describe('TC-TP-002: hover高亮单元格', () => {
@@ -138,7 +126,8 @@ describe('TablePicker', () => {
       expect(cell).toHaveClass('bg-blue-500')
 
       // Trigger mouse leave
-      fireEvent.mouseLeave(cell)
+      const grid = cell.parentElement as HTMLElement
+      fireEvent.mouseLeave(grid)
 
       // The dimension text should disappear
       expect(screen.queryByText('4 × 3 table')).not.toBeInTheDocument()
@@ -176,18 +165,6 @@ describe('TablePicker', () => {
       expect(screen.queryByTestId('backdrop')).not.toBeInTheDocument()
     })
 
-    it('should work with quick insert options', () => {
-      render(<TablePicker onTableSelect={mockOnTableSelect} />)
-
-      // Open the picker
-      fireEvent.click(screen.getByTitle('Insert table'))
-
-      // Click on quick insert option
-      const quickInsert = screen.getByText('3 × 3 table')
-      fireEvent.click(quickInsert)
-
-      expect(mockOnTableSelect).toHaveBeenCalledWith(3, 3)
-    })
   })
 
   describe('TC-TP-004: 点击外部关闭', () => {

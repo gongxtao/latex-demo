@@ -9,8 +9,51 @@ import type { EditorState } from '@/lib/editor-core'
 import ImageResizer from './ImageResizer'
 import FloatingImageLayer, { FloatingImageItem } from './FloatingImageLayer'
 import TableSmartToolbar from './toolbar/TableSmartToolbar'
+import { useEditablePreviewInteractions } from './hooks/useEditablePreviewInteractions'
+import { useEditablePreviewContentSync } from './hooks/useEditablePreviewContentSync'
 
 import { TableHandler } from './utils/table'
+
+const EDITOR_STYLE_CSS = `
+  html, body {
+    min-height: 100%;
+  }
+  body p, body div, body h1, body h2, body h3, body h4, body h5, body h6, body blockquote {
+    margin: 0;
+  }
+  body[contenteditable="true"] {
+    cursor: text;
+  }
+  body[contenteditable="true"]:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: -2px;
+  }
+  *[contenteditable="true"] {
+    cursor: text;
+  }
+  img {
+    cursor: move;
+    max-width: 100%;
+  }
+  @media print {
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    html, body {
+      width: 210mm;
+      margin: 0 auto;
+      padding: 0;
+    }
+    body {
+      padding: 15mm;
+      box-sizing: border-box;
+    }
+    body[contenteditable="true"]:focus {
+      outline: none;
+    }
+  }
+`
 
 interface EditablePreviewProps {
   selectedFile: string | null
@@ -81,17 +124,20 @@ const EditablePreviewWithRef = function EditablePreview({
   const isInitialLoadRef = useRef(true)
   const selectionRef = useRef<{ startPath: number[], startOffset: number, endPath: number[], endOffset: number } | null>(null)
   const isUpdatingRef = useRef(false)
-  const globalClickHandlerRef = useRef<((e: MouseEvent) => void) | null>(null)
   const lastSyncedContentRef = useRef(content)
   const forceContentSyncRef = useRef(false)
   const floatingImagesRef = useRef(floatingImages)
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null)
+  const selectedImageRef = useRef<HTMLImageElement | null>(null)
   const [iframeBody, setIframeBody] = useState<HTMLElement | null>(null)
   const [activeTable, setActiveTable] = useState<HTMLTableElement | null>(null)
+  const activeTableRef = useRef<HTMLTableElement | null>(null)
   const [selectedFloatingImageId, setSelectedFloatingImageId] = useState<string | null>(null)
   const selectedFloatingImageIdRef = useRef<string | null>(null)
   const [iframeScroll, setIframeScroll] = useState({ x: 0, y: 0 })
   const previewContainerRef = useRef<HTMLDivElement>(null)
+  const updateLockTimeoutRef = useRef<number | null>(null)
+  const restoreStateTimeoutRef = useRef<number | null>(null)
 
   // HistoryManager - 直接使用核心引擎
   const historyManagerRef = useRef<HistoryManager | null>(null)
@@ -117,6 +163,10 @@ const EditablePreviewWithRef = function EditablePreview({
   useEffect(() => {
     return () => {
       debouncedSync.cancel()
+      const updateLockTimeout = updateLockTimeoutRef.current
+      if (updateLockTimeout !== null) {
+        window.clearTimeout(updateLockTimeout)
+      }
     }
   }, [debouncedSync])
 
@@ -129,6 +179,14 @@ const EditablePreviewWithRef = function EditablePreview({
   useEffect(() => {
     selectedFloatingImageIdRef.current = selectedFloatingImageId
   }, [selectedFloatingImageId])
+
+  useEffect(() => {
+    selectedImageRef.current = selectedImage
+  }, [selectedImage])
+
+  useEffect(() => {
+    activeTableRef.current = activeTable
+  }, [activeTable])
 
   // 监听外部 content 变化，更新历史
   useEffect(() => {
@@ -168,10 +226,10 @@ const EditablePreviewWithRef = function EditablePreview({
       }
       iframeWindow.removeEventListener('scroll', handleScroll)
     }
-  }, [content, previewKey, isEditing])
+  }, [previewKey, iframeRef])
 
   // Helper function to get node path
-  const getNodePath = (node: Node): number[] => {
+  const getNodePath = useCallback((node: Node): number[] => {
     const path: number[] = []
     let current: Node | null = node
 
@@ -184,7 +242,7 @@ const EditablePreviewWithRef = function EditablePreview({
     }
 
     return path
-  }
+  }, [iframeRef])
 
   const handleSelectFloatingImage = useCallback((id: string | null) => {
     selectedFloatingImageIdRef.current = id
@@ -196,7 +254,7 @@ const EditablePreviewWithRef = function EditablePreview({
   }, [])
 
   // Helper function to get node from path
-  const getNodeFromPath = (path: number[], root: Node): Node | null => {
+  const getNodeFromPath = useCallback((path: number[], root: Node): Node | null => {
     let current: Node | null = root
 
     for (const index of path) {
@@ -205,7 +263,7 @@ const EditablePreviewWithRef = function EditablePreview({
     }
 
     return current
-  }
+  }, [])
 
   // Save selection before update
   const saveSelection = useCallback((iframeDoc: Document) => {
@@ -222,7 +280,7 @@ const EditablePreviewWithRef = function EditablePreview({
       endPath: getNodePath(range.endContainer),
       endOffset: range.endOffset
     }
-  }, [])
+  }, [getNodePath])
 
   // Restore selection after update
   const restoreSelection = useCallback((iframeDoc: Document) => {
@@ -252,10 +310,10 @@ const EditablePreviewWithRef = function EditablePreview({
       // If restoration fails, just continue
       console.warn('Failed to restore selection:', e)
     }
-  }, [])
+  }, [getNodeFromPath])
 
   // Helper to get clean HTML without editor artifacts
-  const getCleanHtml = (doc: Document): string => {
+  const getCleanHtml = useCallback((doc: Document): string => {
     // Clone the document element to avoid modifying the live DOM
     const clone = doc.documentElement.cloneNode(true) as HTMLElement
 
@@ -290,7 +348,7 @@ const EditablePreviewWithRef = function EditablePreview({
     }
 
     return clone.outerHTML
-  }
+  }, [])
 
   // Handle input changes
   const handleInput = useCallback(() => {
@@ -301,10 +359,13 @@ const EditablePreviewWithRef = function EditablePreview({
 
     const newHtml = getCleanHtml(iframeDoc)
     debouncedSync(newHtml)
-    setTimeout(() => {
+    if (updateLockTimeoutRef.current !== null) {
+      window.clearTimeout(updateLockTimeoutRef.current)
+    }
+    updateLockTimeoutRef.current = window.setTimeout(() => {
       isUpdatingRef.current = false
     }, 50)
-  }, [debouncedSync])
+  }, [debouncedSync, getCleanHtml, iframeRef])
 
   const handleUndo = useCallback(() => {
     debouncedSync.flush()
@@ -335,513 +396,106 @@ const EditablePreviewWithRef = function EditablePreview({
   // 暴露历史操作方法
   const canUndo = historyManager.canUndo()
   const canRedo = historyManager.canRedo()
-
-  // Image resize functionality moved to ImageResizer component
+  const canUndoRef = useRef(canUndo)
+  const canRedoRef = useRef(canRedo)
 
   useEffect(() => {
-    if (!iframeRef.current || !content) return
-    if (isUpdatingRef.current) return // Prevent recursive updates
+    canUndoRef.current = canUndo
+    canRedoRef.current = canRedo
+  }, [canUndo, canRedo])
 
-    const iframe = iframeRef.current
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
+  const isAtLineEnd = useCallback((range: Range): boolean => {
+    const endContainer = range.endContainer
+    const endOffset = range.endOffset
 
-    if (!iframeDoc) return
-
-    // Check if we need to update
-    const isIframeEmpty = !iframeDoc.body || iframeDoc.body.childNodes.length === 0
-    // Only write if content is different from last synced (external update) OR if iframe is empty (reload/refresh)
-    if (!forceContentSyncRef.current && content === lastSyncedContentRef.current && !isIframeEmpty) {
-      return
-    }
-
-    // If we are writing new content, cancel any pending debounced updates
-    debouncedSync.cancel()
-    lastSyncedContentRef.current = content
-    forceContentSyncRef.current = false
-
-    // Save current state before updating
-    if (!isInitialLoadRef.current && iframeDoc.body && isEditing) {
-      // Save scroll position
-      scrollPositionRef.current = {
-        x: iframeDoc.documentElement.scrollLeft || iframeDoc.body.scrollLeft,
-        y: iframeDoc.documentElement.scrollTop || iframeDoc.body.scrollTop
+    if (endContainer.nodeType === Node.TEXT_NODE) {
+      const textNode = endContainer as Text
+      if (endOffset < textNode.length) {
+        return false
       }
-
-      // Save selection
-      saveSelection(iframeDoc)
-    }
-
-    // Write content to iframe
-    iframeDoc.open()
-    iframeDoc.write(content)
-    // Inject a dedicated root for the resizer to avoid interference
-    iframeDoc.write('<div id="image-resizer-root" style="position: absolute; top: 0; left: 0; width: 0; height: 0; overflow: visible; z-index: 2147483647;"></div>')
-    iframeDoc.close()
-
-    // Enable CSS mode for execCommand
-    try {
-      iframeDoc.execCommand('styleWithCSS', false, 'true')
-    } catch (e) {
-      console.warn('Failed to enable styleWithCSS', e)
-    }
-
-    if (iframeDoc.body) {
-      // Find our dedicated root
-      const resizerRoot = iframeDoc.getElementById('image-resizer-root')
-      setIframeBody(resizerRoot || iframeDoc.body)
-    }
-
-    // Create global click handler and store reference for cleanup
-    // Use event delegation at document level
-    const handleGlobalClick = (e: MouseEvent) => {
-      // If not in edit mode, prevent selection and interaction
-      if (!isEditing) {
-        setSelectedImage(null)
-        setActiveTable(null)
-        return
-      }
-
-      let target = e.target as HTMLElement
-      // Handle text nodes (nodeType 3)
-      if (target.nodeType === 3 && target.parentElement) {
-        target = target.parentElement
-      }
-
-      // Select image
-      if (target.tagName === 'IMG') {
-        setSelectedImage(target as HTMLImageElement)
-        return
-      }
-
-      // Detect table
-      // Prioritize clicking inside a table cell to activate it
-      const table = target.closest('table')
-      if (table) {
-          // If we are clicking a different table or no table was active, set it
-          if (activeTable !== table) {
-              setActiveTable(table as HTMLTableElement)
-          }
-      } else {
-          // Only deselect if we are NOT clicking on the SmartToolbar
-          // The SmartToolbar is outside the iframe, so clicks there won't trigger this iframe click listener.
-          // BUT, we might be clicking empty space in iframe.
-          setActiveTable(null)
-          setSelectedImage(null)
-      }
-    }
-
-    // Handle context menu to activate table
-    const handleContextMenu = (e: MouseEvent) => {
-        if (!isEditing) return
-        let target = e.target as HTMLElement
-        if (target.nodeType === 3 && target.parentElement) {
-          target = target.parentElement
-        }
-
-        const table = target.closest('table')
-        if (table) {
-            setActiveTable(table as HTMLTableElement)
-        }
-    }
-
-    // Handle global mousedown for deselection (more reliable than click)
-    const handleGlobalMouseDown = (e: MouseEvent) => {
-      if (!isEditing) return
-
-      let target = e.target as HTMLElement
-      if (target.nodeType === 3 && target.parentElement) {
-        target = target.parentElement
-      }
-
-      const isFloatingLayerTarget = !!target.closest('[data-floating-layer="true"]')
-      if (isFloatingLayerTarget) {
-        setSelectedImage(null)
-        setActiveTable(null)
-        return
-      }
-
-      // Don't deselect if clicking on image or resizer handle
-      if (target.tagName === 'IMG' || target.classList.contains('resizer-handle')) {
-        return
-      }
-
-      handleSelectFloatingImage(null)
-
-      // If clicking inside a table, activate it immediately
-      const table = target.closest('table')
-      if (table) {
-          if (activeTable !== table) {
-              setActiveTable(table as HTMLTableElement)
-          }
-          return
-      }
-
-      // Deselect image and table if clicking elsewhere
-      setSelectedImage(null)
-      setActiveTable(null)
-    }
-
-    // Handle mouseup as fallback for click (sometimes click is swallowed during editing)
-    const handleMouseUp = (e: MouseEvent) => {
-      if (!isEditing) return
-      const target = e.target as HTMLElement
-      if (target.closest('[data-floating-layer="true"]')) {
-        return
-      }
-      handleSelectFloatingImage(null)
-      if (target.tagName === 'IMG') {
-        setSelectedImage(target as HTMLImageElement)
-      }
-    }
-
-    // Store reference for cleanup
-    globalClickHandlerRef.current = handleGlobalClick
-
-    // Add without event capture to let other events work normally
-    setTimeout(() => {
-      // Use capture for mousedown to ensure we catch it before any stopPropagation
-      // Also bind to window to catch everything
-      const win = iframeDoc.defaultView || window
-      win.addEventListener('mousedown', handleGlobalMouseDown, true)
-      iframeDoc.addEventListener('mousedown', handleGlobalMouseDown, true)
-      iframeDoc.addEventListener('click', handleGlobalClick, false)
-      iframeDoc.addEventListener('mouseup', handleMouseUp, false)
-      iframeDoc.addEventListener('contextmenu', handleContextMenu, false)
-
-      // Listen for selection changes to clear image selection when cursor moves elsewhere
-      iframeDoc.addEventListener('selectionchange', () => {
-        if (!isEditing) return
-
-        const selection = iframeDoc.getSelection()
-
-        // Check if selection is inside a table to activate it
-        if (selection && selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0)
-            let node = range.startContainer
-            if (node.nodeType === 3 && node.parentElement) {
-                node = node.parentElement
-            }
-
-            const element = node as HTMLElement
-             const table = element.closest('table')
-
-             if (table) {
-                 setActiveTable(table as HTMLTableElement)
-             } else {
-                 setActiveTable(null)
-             }
-         }
-
-        if (selection && !selection.isCollapsed) {
-           setTimeout(() => {
-             // Logic to clear image selection if needed
-           }, 0)
-        }
-      })
-    }, 100)
-
-    // Add paste event handler for Ctrl+V image insertion
-    const handlePaste = (e: ClipboardEvent) => {
-      if (!isEditing) return
-
-      const items = Array.from(e.clipboardData?.items || [])
-      const imageItem = items.find(item => item.type.startsWith('image/'))
-
-      if (imageItem) {
-        e.preventDefault()
-        const file = imageItem.getAsFile()
-
-        if (file) {
-          // Check file size (max 5MB)
-          if (file.size > 5 * 1024 * 1024) {
-            alert('粘贴失败：图片超过5MB，请压缩后重试')
-            return
-          }
-
-          // Read file as data URL
-          const reader = new FileReader()
-          reader.onload = (event) => {
-            const dataUrl = event.target?.result as string
-            if (dataUrl) {
-              // Create image element
-              const img = iframeDoc.createElement('img')
-              img.src = dataUrl
-              img.style.maxWidth = '100%'
-              img.style.height = 'auto'
-
-              // Get current selection
-              const selection = iframeDoc.getSelection()
-              if (selection && selection.rangeCount > 0) {
-                const range = selection.getRangeAt(0)
-                range.deleteContents()
-                range.insertNode(img)
-                // Move cursor after image
-                range.setStartAfter(img)
-                range.setEndAfter(img)
-                selection.removeAllRanges()
-                selection.addRange(range)
-              } else {
-                // If no selection, append to body
-                iframeDoc.body.appendChild(img)
-              }
-            }
-          }
-          reader.readAsDataURL(file)
-        }
-      }
-    }
-
-    // Add paste event listener
-    iframeDoc.addEventListener('paste', handlePaste)
-
-    // Helper function to check if cursor is at the end of a line
-    const isAtLineEnd = (range: Range): boolean => {
-      const endContainer = range.endContainer
-      const endOffset = range.endOffset
-
-      // If we're in a text node
-      if (endContainer.nodeType === Node.TEXT_NODE) {
-        const textNode = endContainer as Text
-        // Check if we're at the end of the text node
-        if (endOffset < textNode.length) {
-          return false // Not at end of text node
-        }
-        // Check if there's more content after this text node in the parent
-        const parent = endContainer.parentNode
-        if (parent && parent.nextSibling) {
-          // Check if next sibling has meaningful content
-          let nextSibling: ChildNode | null = parent.nextSibling
-          while (nextSibling) {
-            if (nextSibling.nodeType === Node.TEXT_NODE) {
-              const text = (nextSibling as Text).textContent?.trim()
-              if (text && text.length > 0) {
-                return false // Has more text content
-              }
-            } else if (nextSibling.nodeType === Node.ELEMENT_NODE) {
-              const element = nextSibling as Element
-              // Ignore BR elements
-              if (element.tagName !== 'BR') {
-                return false // Has more element content
-              }
-            }
-            nextSibling = nextSibling.nextSibling
-          }
-        }
-        return true // At end of text content
-      }
-
-      // If we're in an element node
-      if (endContainer.nodeType === Node.ELEMENT_NODE) {
-        const element = endContainer as Element
-        // Check if there are child nodes after the cursor
-        const childNodes = Array.from(element.childNodes)
-        for (let i = endOffset; i < childNodes.length; i++) {
-          const child = childNodes[i]
-          if (child.nodeType === Node.TEXT_NODE) {
-            const text = (child as Text).textContent?.trim()
+      const parent = endContainer.parentNode
+      if (parent && parent.nextSibling) {
+        let nextSibling: ChildNode | null = parent.nextSibling
+        while (nextSibling) {
+          if (nextSibling.nodeType === Node.TEXT_NODE) {
+            const text = (nextSibling as Text).textContent?.trim()
             if (text && text.length > 0) {
               return false
             }
-          } else if (child.nodeType === Node.ELEMENT_NODE) {
-            if ((child as Element).tagName !== 'BR') {
+          } else if (nextSibling.nodeType === Node.ELEMENT_NODE) {
+            const element = nextSibling as Element
+            if (element.tagName !== 'BR') {
               return false
             }
           }
+          nextSibling = nextSibling.nextSibling
         }
-        return true // No more content after cursor
       }
-
-      return false
+      return true
     }
 
-    // Add keydown event handler for Delete key
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isEditing) return
-
-      if (e.key === 'Enter') {
-        e.preventDefault()
-        e.stopPropagation()
-        const selection = iframeDoc.getSelection()
-        if (selection && selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0)
-          range.deleteContents()
-
-          // Check if cursor is at line end
-          const atLineEnd = isAtLineEnd(range)
-
-          if (atLineEnd) {
-            // At line end: insert two <br> elements
-            const br1 = iframeDoc.createElement('br')
-            const br2 = iframeDoc.createElement('br')
-            range.insertNode(br1)
-            br1.parentNode?.insertBefore(br2, br1.nextSibling)
-            range.setStartAfter(br2)
-            range.setEndAfter(br2)
-          } else {
-            // In middle of line: insert single <br>
-            const br = iframeDoc.createElement('br')
-            range.insertNode(br)
-            range.setStartAfter(br)
-            range.setEndAfter(br)
+    if (endContainer.nodeType === Node.ELEMENT_NODE) {
+      const element = endContainer as Element
+      const childNodes = Array.from(element.childNodes)
+      for (let i = endOffset; i < childNodes.length; i++) {
+        const child = childNodes[i]
+        if (child.nodeType === Node.TEXT_NODE) {
+          const text = (child as Text).textContent?.trim()
+          if (text && text.length > 0) {
+            return false
           }
-
-          selection.removeAllRanges()
-          selection.addRange(range)
-          const newHtml = getCleanHtml(iframeDoc)
-          debouncedSync(newHtml)
-        }
-        return
-      }
-
-      // Handle Undo/Redo
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        e.preventDefault()
-        e.stopPropagation()
-        if (e.shiftKey) {
-          if (canRedo) {
-            handleRedo()
-          } else {
-            iframeDoc.execCommand('redo')
-          }
-        } else {
-          if (canUndo) {
-            handleUndo()
-          } else {
-            iframeDoc.execCommand('undo')
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+          if ((child as Element).tagName !== 'BR') {
+            return false
           }
         }
-        return
       }
-
-      // Check for Delete key
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        const floatingId = selectedFloatingImageIdRef.current
-        if (floatingId) {
-          e.preventDefault()
-          e.stopPropagation()
-          const nextImages = floatingImagesRef.current.filter(image => image.id !== floatingId)
-          onFloatingImagesChange(nextImages)
-          handleSelectFloatingImage(null)
-          historyManager.push(toEditorState(lastSyncedContentRef.current, nextImages))
-          return
-        }
-        if (selectedImage) {
-          e.preventDefault()
-          e.stopPropagation()
-          selectedImage.remove()
-          setSelectedImage(null)
-
-          const newHtml = getCleanHtml(iframeDoc)
-          debouncedSync(newHtml)
-          return
-        }
-      }
+      return true
     }
 
-    // Add keydown event listener to document
-    iframeDoc.addEventListener('keydown', handleKeyDown)
+    return false
+  }, [])
 
-    // Restore state after content loads
-    if (!isInitialLoadRef.current) {
-      setTimeout(() => {
-        if (iframeDoc.body) {
-          // Restore scroll position
-          iframeDoc.documentElement.scrollLeft = scrollPositionRef.current.x
-          iframeDoc.documentElement.scrollTop = scrollPositionRef.current.y
-          iframeDoc.body.scrollLeft = scrollPositionRef.current.x
-          iframeDoc.body.scrollTop = scrollPositionRef.current.y
+  useEditablePreviewContentSync({
+    iframeRef,
+    content,
+    isEditing,
+    isUpdatingRef,
+    forceContentSyncRef,
+    lastSyncedContentRef,
+    isInitialLoadRef,
+    scrollPositionRef,
+    restoreStateTimeoutRef,
+    saveSelection,
+    restoreSelection,
+    debouncedSync,
+    setIframeBody,
+    handleInput,
+    editorStyleCss: EDITOR_STYLE_CSS
+  })
 
-          // Restore selection if editing
-          if (isEditing) {
-            restoreSelection(iframeDoc)
-          }
-        }
-      }, 0)
-    } else {
-      isInitialLoadRef.current = false
-    }
-
-    if (isEditing) {
-      // Make the body editable
-      if (iframeDoc.body) {
-        iframeDoc.body.contentEditable = 'true'
-        iframeDoc.body.style.outline = 'none'
-
-        // Add editing styles
-        const style = iframeDoc.createElement('style')
-        style.id = 'editor-style'
-        style.textContent = `
-          html, body {
-            min-height: 100%;
-          }
-          body p, body div, body h1, body h2, body h3, body h4, body h5, body h6, body blockquote {
-            margin: 0;
-          }
-          body[contenteditable="true"] {
-            cursor: text;
-          }
-          body[contenteditable="true"]:focus {
-            outline: 2px solid #3b82f6;
-            outline-offset: -2px;
-          }
-          *[contenteditable="true"] {
-            cursor: text;
-          }
-          img {
-            cursor: move;
-            max-width: 100%;
-          }
-
-          /* Print styles */
-          @media print {
-            @page {
-              size: A4;
-              margin: 0;
-            }
-            html, body {
-              width: 210mm;
-              margin: 0 auto;
-              padding: 0;
-            }
-            body {
-              padding: 15mm;
-              box-sizing: border-box;
-            }
-            /* Hide edit indicators when printing */
-            body[contenteditable="true"]:focus {
-              outline: none;
-            }
-          }
-        `
-        iframeDoc.head.appendChild(style)
-
-        iframeDoc.body.addEventListener('input', handleInput)
-
-        // Add blur handler to flush changes immediately when focus leaves editor
-        const handleBlur = () => {
-          debouncedSync.flush()
-        }
-        iframeDoc.body.addEventListener('blur', handleBlur)
-
-        return () => {
-          iframeDoc.body.removeEventListener('input', handleInput)
-          iframeDoc.body.removeEventListener('blur', handleBlur)
-          // Remove global click handler
-          if (globalClickHandlerRef.current) {
-            const win = iframeDoc.defaultView || window
-            win.removeEventListener('mousedown', handleGlobalMouseDown, true)
-            iframeDoc.removeEventListener('click', globalClickHandlerRef.current, false)
-            iframeDoc.removeEventListener('mousedown', handleGlobalMouseDown, true)
-          }
-        }
-      }
-    } else {
-      // Make it non-editable
-      if (iframeDoc.body) {
-        iframeDoc.body.contentEditable = 'false'
-      }
-    }
-  }, [content, isEditing, handleInput, onContentChange, restoreSelection, saveSelection, handleUndo, handleRedo, canUndo, canRedo, debouncedSync, selectedImage, activeTable, selectedFloatingImageId, onFloatingImagesChange, historyManager, handleSelectFloatingImage])
+  useEditablePreviewInteractions({
+    iframeRef,
+    isEditing,
+    activeTableRef,
+    selectedImageRef,
+    selectedFloatingImageIdRef,
+    floatingImagesRef,
+    canUndoRef,
+    canRedoRef,
+    setSelectedImage,
+    setActiveTable,
+    handleSelectFloatingImage,
+    onFloatingImagesChange,
+    onFloatingImageDelete: (nextImages) => {
+      historyManager.push(toEditorState(lastSyncedContentRef.current, nextImages))
+    },
+    handleUndo,
+    handleRedo,
+    isAtLineEnd,
+    getCleanHtml,
+    debouncedSync
+  })
 
   const toggleEditMode = useCallback(() => {
     // If we're exiting edit mode, sync the latest content first
@@ -864,7 +518,7 @@ const EditablePreviewWithRef = function EditablePreview({
     // Toggle state
     setIsEditing(prev => !prev)
     setPreviewKey(prev => prev + 1)
-  }, [isEditing, onContentChange, handleSelectFloatingImage])
+  }, [isEditing, onContentChange, handleSelectFloatingImage, getCleanHtml, iframeRef])
 
   const handleRefresh = () => {
     setPreviewKey(prev => prev + 1)
@@ -1088,6 +742,9 @@ const EditablePreviewWithRef = function EditablePreview({
           isEditing={!!selectedFile && isEditing}
           disabled={!selectedFile}
           onFloatingImageInsert={handleInsertFloatingImage}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          refreshToken={previewKey}
         />
       )}
 
@@ -1131,6 +788,7 @@ const EditablePreviewWithRef = function EditablePreview({
               ref={iframeRef}
               className="w-full h-full min-h-[800px] border-0"
               title="Editable Preview"
+              sandbox="allow-same-origin"
             />
             {selectedFile && floatingImages.length > 0 && (
               <FloatingImageLayer

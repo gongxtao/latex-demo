@@ -28,6 +28,14 @@ jest.mock('../../icons', () => ({
   ImageIcon: () => <div data-testid="image-icon">Image</div>
 }))
 
+const createMockFileList = (file: File): FileList => {
+  return {
+    0: file,
+    length: 1,
+    item: (index: number): File | null => (index === 0 ? file : null)
+  } as unknown as FileList
+}
+
 describe('ImagePicker', () => {
   const mockOnImageSelect = jest.fn()
 
@@ -122,11 +130,7 @@ describe('ImagePicker', () => {
       Object.defineProperty(file, 'size', { value: 1024 * 1024 }) // 1MB
 
       // Create mock FileList
-      const fileList = {
-        0: file,
-        length: 1,
-        item: (index: number) => fileList[index]
-      }
+      const fileList = createMockFileList(file)
 
       // Mock FileReader
       const mockFileReader = {
@@ -157,11 +161,7 @@ describe('ImagePicker', () => {
 
       // Create a non-image file
       const file = new File(['mock content'], 'test.pdf', { type: 'application/pdf' })
-      const fileList = {
-        0: file,
-        length: 1,
-        item: (index: number) => fileList[index]
-      }
+      const fileList = createMockFileList(file)
 
       fireEvent.change(input, { target: { files: fileList } })
 
@@ -175,20 +175,16 @@ describe('ImagePicker', () => {
 
       const input = document.querySelector('input[type="file"]') as HTMLInputElement
 
-      // Create a large image file (> 5MB)
+      // Create a large image file (> 10MB)
       const file = new File(['mock image content'], 'large.jpg', { type: 'image/jpeg' })
-      Object.defineProperty(file, 'size', { value: 6 * 1024 * 1024 }) // 6MB
+      Object.defineProperty(file, 'size', { value: 11 * 1024 * 1024 }) // 11MB
 
-      const fileList = {
-        0: file,
-        length: 1,
-        item: (index: number) => fileList[index]
-      }
+      const fileList = createMockFileList(file)
 
       fireEvent.change(input, { target: { files: fileList } })
 
       // Should show alert about size
-      expect(global.alert).toHaveBeenCalledWith('Image size must be less than 5MB')
+      expect(global.alert).toHaveBeenCalledWith('Image size must be less than 10MB')
       expect(mockOnImageSelect).not.toHaveBeenCalled()
     })
 
@@ -210,11 +206,7 @@ describe('ImagePicker', () => {
       const file = new File(['mock'], 'test.jpg', { type: 'image/jpeg' })
       Object.defineProperty(file, 'size', { value: 1024 })
 
-      const fileList = {
-        0: file,
-        length: 1,
-        item: (index: number) => fileList[index]
-      }
+      const fileList = createMockFileList(file)
 
       fireEvent.change(input, { target: { files: fileList } })
 
@@ -239,11 +231,7 @@ describe('ImagePicker', () => {
       const file = new File(['mock'], 'test.jpg', { type: 'image/jpeg' })
       Object.defineProperty(file, 'size', { value: 1024 })
 
-      const fileList = {
-        0: file,
-        length: 1,
-        item: (index: number) => fileList[index]
-      }
+      const fileList = createMockFileList(file)
 
       fireEvent.change(input, { target: { files: fileList } })
 
@@ -265,11 +253,7 @@ describe('ImagePicker', () => {
       const file = new File(['mock'], 'test.jpg', { type: 'image/jpeg' })
       Object.defineProperty(file, 'size', { value: 1024 })
 
-      const fileList = {
-        0: file,
-        length: 1,
-        item: (index: number) => fileList[index]
-      }
+      const fileList = createMockFileList(file)
 
       fireEvent.change(input, { target: { files: fileList } })
 
@@ -291,11 +275,7 @@ describe('ImagePicker', () => {
 
       // Try to trigger change
       const file = new File(['mock'], 'test.jpg', { type: 'image/jpeg' })
-      const fileList = {
-        0: file,
-        length: 1,
-        item: (index: number) => fileList[index]
-      }
+      const fileList = createMockFileList(file)
 
       fireEvent.change(input, { target: { files: fileList } })
 
@@ -313,11 +293,7 @@ describe('ImagePicker', () => {
       const file = new File(['mock'], 'test.jpg', { type: 'image/jpeg' })
       Object.defineProperty(file, 'size', { value: 1024 })
 
-      const fileList = {
-        0: file,
-        length: 1,
-        item: (index: number) => fileList[index]
-      }
+      const fileList = createMockFileList(file)
 
       const mockFileReader = {
         readAsDataURL: jest.fn(),
@@ -348,11 +324,7 @@ describe('ImagePicker', () => {
       const file = new File(['mock'], 'test.jpg', { type: 'image/jpeg' })
       Object.defineProperty(file, 'size', { value: 1024 })
 
-      const fileList = {
-        0: file,
-        length: 1,
-        item: (index: number) => fileList[index]
-      }
+      const fileList = createMockFileList(file)
 
       const mockFileReader = {
         readAsDataURL: jest.fn(),

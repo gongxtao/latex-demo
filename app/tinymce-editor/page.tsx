@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 
 declare global {
@@ -46,25 +46,14 @@ export default function TinyMCEEditor() {
     }
   };
 
-  // 当脚本加载完成后初始化编辑器
-  useEffect(() => {
-    if (scriptLoaded && typeof window !== 'undefined' && window.tinymce) {
-      initTinyMCE();
+  const handleEditorChange = useCallback(() => {
+    if (editorRef.current) {
+      editorRef.current.getContent();
+      console.log('Editor content changed');
     }
+  }, []);
 
-    // 清理函数
-    return () => {
-      if (editorRef.current) {
-        try {
-          editorRef.current.remove();
-        } catch (e) {
-          console.log('Editor cleanup error:', e);
-        }
-      }
-    };
-  }, [scriptLoaded]);
-
-  const initTinyMCE = () => {
+  const initTinyMCE = useCallback(() => {
     try {
       // 如果已经初始化过，先移除
       if (window.tinymce.get('tinymce-editor')) {
@@ -115,7 +104,25 @@ export default function TinyMCEEditor() {
       console.error('TinyMCE initialization error:', err);
       setError('编辑器初始化失败');
     }
-  };
+  }, [handleEditorChange]);
+
+  // 当脚本加载完成后初始化编辑器
+  useEffect(() => {
+    if (scriptLoaded && typeof window !== 'undefined' && window.tinymce) {
+      initTinyMCE();
+    }
+
+    // 清理函数
+    return () => {
+      if (editorRef.current) {
+        try {
+          editorRef.current.remove();
+        } catch (e) {
+          console.log('Editor cleanup error:', e);
+        }
+      }
+    };
+  }, [scriptLoaded, initTinyMCE]);
 
   const fetchHtmlFiles = async () => {
     try {
@@ -173,13 +180,6 @@ export default function TinyMCEEditor() {
       if (editorRef.current) {
         editorRef.current.setContent('');
       }
-    }
-  };
-
-  const handleEditorChange = () => {
-    if (editorRef.current) {
-      const content = editorRef.current.getContent();
-      console.log('Editor content changed');
     }
   };
 

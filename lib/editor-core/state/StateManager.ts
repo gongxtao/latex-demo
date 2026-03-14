@@ -52,7 +52,7 @@ export class StateManager {
       : updater
 
     const oldState = this.state
-    this.state = { ...newState }
+    this.state = { ...this.state, ...newState }
 
     // 如果在批处理中，暂存更新
     if (this.batchDepth > 0) {

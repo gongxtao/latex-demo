@@ -4,7 +4,7 @@ import useHistory from '@/components/editor/hooks/useHistory';
 describe('useHistory', () => {
   test('should initialize with content', () => {
     const { result } = renderHook(() => useHistory({ html: 'initial', floatingImages: [] }));
-    expect(result.current.current.html).toBe('initial');
+    expect(result.current.current!.html).toBe('initial');
     expect(result.current.canUndo).toBe(false);
     expect(result.current.canRedo).toBe(false);
   });
@@ -16,7 +16,7 @@ describe('useHistory', () => {
       result.current.push({ html: 'state 1', floatingImages: [] });
     });
 
-    expect(result.current.current.html).toBe('state 1');
+    expect(result.current.current!.html).toBe('state 1');
     expect(result.current.canUndo).toBe(true);
     expect(result.current.canRedo).toBe(false);
   });
@@ -33,7 +33,7 @@ describe('useHistory', () => {
       expect(undoResult?.html).toBe('initial');
     });
 
-    expect(result.current.current.html).toBe('initial');
+    expect(result.current.current!.html).toBe('initial');
     expect(result.current.canUndo).toBe(false);
     expect(result.current.canRedo).toBe(true);
   });
@@ -54,7 +54,7 @@ describe('useHistory', () => {
       expect(redoResult?.html).toBe('state 1');
     });
 
-    expect(result.current.current.html).toBe('state 1');
+    expect(result.current.current!.html).toBe('state 1');
     expect(result.current.canUndo).toBe(true);
     expect(result.current.canRedo).toBe(false);
   });
@@ -69,7 +69,7 @@ describe('useHistory', () => {
       });
     }
 
-    expect(result.current.current.html).toBe('60');
+    expect(result.current.current!.html).toBe('60');
     
     // Undo 50 times should reach limit (actually 50 items in past stack)
     // The implementation keeps 50 items in past.
@@ -83,7 +83,7 @@ describe('useHistory', () => {
     }
     
     // Should be at state 10 (since 0..9 were dropped)
-    expect(result.current.current.html).toBe('10');
+    expect(result.current.current!.html).toBe('10');
     expect(result.current.canUndo).toBe(false); // Stack exhausted
   });
 });

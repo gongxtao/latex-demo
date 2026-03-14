@@ -45,24 +45,26 @@ export interface FloatingImageItem {
 /**
  * 命令处理函数
  */
-export type CommandHandler = (doc: Document, ...args: any[]) => void
+export type CommandHandler = (...args: any[]) => void
 
 /**
  * 命令状态查询函数
  */
-export type CommandStateQuery = () => boolean
+export type CommandStateQuery = (...args: any[]) => boolean
 
 /**
  * 命令值查询函数
  */
-export type CommandValueQuery = () => string
+export type CommandValueQuery = (...args: any[]) => string
 
 // ==================== 状态相关类型 ====================
 
 /**
  * 状态更新函数
  */
-export type StateUpdater = EditorState | ((currentState: EditorState) => EditorState)
+export type StateUpdater =
+  | Partial<EditorState>
+  | ((currentState: EditorState) => EditorState)
 
 /**
  * 状态监听器
@@ -90,3 +92,16 @@ export interface SavedSelection {
   endPath: number[]
   endOffset: number
 }
+
+export type {
+  Plugin,
+  PluginInstance,
+  PluginState,
+  EditorAPI,
+  CommandExtension,
+  ToolbarExtension
+} from '../plugin/types'
+
+export type { EditorConfig, ToolbarConfig } from '../config/types'
+
+export type { Theme, ThemeColors } from '../theme/ThemeManager'

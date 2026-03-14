@@ -131,6 +131,41 @@ describe('EditorToolbar Integration', () => {
     expect(mockOnContentChange).toHaveBeenCalled()
   })
 
+  it('format painter applies once without fontName command error', () => {
+    const mockOnContentChange = jest.fn()
+    const props = { ...defaultProps, onContentChange: mockOnContentChange }
+    const doc = props.iframeRef.current!.contentDocument!
+
+    doc.queryCommandValue = jest.fn((cmd: string) => {
+      if (cmd === 'fontName') return '"Arial"'
+      return ''
+    })
+    doc.queryCommandState = jest.fn(() => false)
+    doc.getSelection = jest.fn(() => ({
+      rangeCount: 0,
+      isCollapsed: false
+    } as any))
+
+    render(<EditorToolbar {...props} />)
+
+    fireEvent.click(screen.getByTestId('btn-format-painter'))
+
+    expect(() => {
+      act(() => {
+        doc.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+      })
+    }).not.toThrow()
+
+    const firstApplyCalls = mockOnContentChange.mock.calls.length
+    expect(firstApplyCalls).toBe(1)
+
+    act(() => {
+      doc.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+    })
+
+    expect(mockOnContentChange.mock.calls.length).toBe(firstApplyCalls)
+  })
+
   it('disables buttons when not editing', () => {
     const { rerender } = render(<EditorToolbar {...defaultProps} isEditing={false} />)
 

@@ -26,13 +26,6 @@ const TablePicker: React.FC<TablePickerProps> = ({ onTableSelect, disabled = fal
     setIsOpen(false)
   }
 
-  const quickInsertOptions = [
-    { rows: 2, cols: 2, label: '2 × 2 table' },
-    { rows: 3, cols: 3, label: '3 × 3 table' },
-    { rows: 2, cols: 3, label: '2 × 3 table' },
-    { rows: 3, cols: 2, label: '3 × 2 table' }
-  ]
-
   return (
     <div className="relative">
       {/* Main Table Button */}
@@ -54,7 +47,13 @@ const TablePicker: React.FC<TablePickerProps> = ({ onTableSelect, disabled = fal
 
         {/* Table Grid */}
         <div className="mb-3">
-          <div className="grid grid-cols-10 gap-1">
+          <div
+            className="grid grid-cols-10 gap-1"
+            onMouseLeave={() => {
+              setHoveredRow(null)
+              setHoveredCol(null)
+            }}
+          >
             {Array.from({ length: TABLE_MAX_ROWS * TABLE_MAX_COLS }, (_, i) => {
               const row = Math.floor(i / TABLE_MAX_COLS) + 1
               const col = (i % TABLE_MAX_COLS) + 1
@@ -74,10 +73,6 @@ const TablePicker: React.FC<TablePickerProps> = ({ onTableSelect, disabled = fal
                     setHoveredRow(row)
                     setHoveredCol(col)
                   }}
-                  onMouseLeave={() => {
-                    setHoveredRow(null)
-                    setHoveredCol(null)
-                  }}
                   className={`
                     w-5 h-5 border border-gray-300 rounded-sm transition-colors
                     ${isHighlighted ? 'bg-blue-500 border-blue-500' : 'hover:bg-gray-200'}
@@ -95,22 +90,6 @@ const TablePicker: React.FC<TablePickerProps> = ({ onTableSelect, disabled = fal
           )}
         </div>
 
-        {/* Quick Insert */}
-        <div className="border-t border-gray-200 pt-3">
-          <p className="text-xs text-gray-500 mb-2 px-1">Quick insert</p>
-          <div className="grid grid-cols-2 gap-2">
-            {quickInsertOptions.map((option) => (
-              <button
-                key={`${option.rows}x${option.cols}`}
-                type="button"
-                onClick={() => handleTableClick(option.rows, option.cols)}
-                className="px-2 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors text-left"
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </PickerDropdown>
     </div>
   )

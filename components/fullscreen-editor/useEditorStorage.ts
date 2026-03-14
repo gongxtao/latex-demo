@@ -22,6 +22,19 @@ export function useEditorStorage() {
   const [floatingImages, setFloatingImages] = useState<FloatingImageItem[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [hasStorageError, setHasStorageError] = useState(false)
+
+  const safeSetItem = useCallback((key: string, value: string) => {
+    try {
+      localStorage.setItem(key, value)
+      setHasStorageError(false)
+      return true
+    } catch (e) {
+      setHasStorageError(true)
+      console.error(`Failed to save "${key}" to localStorage:`, e)
+      return false
+    }
+  }, [])
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -52,25 +65,26 @@ export function useEditorStorage() {
 
   // Save content to localStorage
   const saveContent = useCallback((content: string) => {
-    localStorage.setItem(STORAGE_KEYS.CONTENT, content)
+    safeSetItem(STORAGE_KEYS.CONTENT, content)
     setHtmlContent(content)
-  }, [])
+  }, [safeSetItem])
 
   // Save floating images to localStorage
   const saveFloatingImages = useCallback((images: FloatingImageItem[]) => {
-    localStorage.setItem(STORAGE_KEYS.FLOATING_IMAGES, JSON.stringify(images))
+    safeSetItem(STORAGE_KEYS.FLOATING_IMAGES, JSON.stringify(images))
     setFloatingImages(images)
-  }, [])
+  }, [safeSetItem])
 
   // Save template to localStorage
   const saveTemplate = useCallback((template: string | null) => {
     if (template) {
-      localStorage.setItem(STORAGE_KEYS.TEMPLATE, template)
+      safeSetItem(STORAGE_KEYS.TEMPLATE, template)
     } else {
       localStorage.removeItem(STORAGE_KEYS.TEMPLATE)
+      setHasStorageError(false)
     }
     setSelectedTemplate(template)
-  }, [])
+  }, [safeSetItem])
 
   // Clear all saved data
   const clearAll = useCallback(() => {
@@ -80,6 +94,7 @@ export function useEditorStorage() {
     setHtmlContent('')
     setFloatingImages([])
     setSelectedTemplate(null)
+    setHasStorageError(false)
   }, [])
 
   return {
@@ -89,6 +104,7 @@ export function useEditorStorage() {
     setFloatingImages: saveFloatingImages,
     selectedTemplate,
     setSelectedTemplate: saveTemplate,
+    hasStorageError,
     isLoaded,
     clearAll
   }

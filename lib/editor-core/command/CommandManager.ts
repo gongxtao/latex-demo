@@ -68,12 +68,12 @@ export class CommandManager {
    * @param name 命令名称
    * @returns 命令是否可用/激活
    */
-  queryState(name: string): boolean {
+  queryState(name: string, ...args: any[]): boolean {
     const registration = this.commands.get(name)
     if (!registration) {
       return false
     }
-    return registration.stateQuery ? registration.stateQuery() : true
+    return registration.stateQuery ? registration.stateQuery(...args) : true
   }
 
   /**
@@ -81,12 +81,12 @@ export class CommandManager {
    * @param name 命令名称
    * @returns 命令当前值
    */
-  queryValue(name: string): string {
+  queryValue(name: string, ...args: any[]): string {
     const registration = this.commands.get(name)
     if (!registration || !registration.valueQuery) {
       return ''
     }
-    return registration.valueQuery()
+    return registration.valueQuery(...args)
   }
 
   /**

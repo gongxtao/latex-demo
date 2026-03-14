@@ -2,7 +2,7 @@
  * Editor Core 在测试环境中的验证测试
  */
 
-import { CommandManager, StateManager, HistoryManager, registerBuiltinCommands } from '@/lib/editor-core'
+import { CommandManager, StateManager, HistoryManager, registerBuiltinCommands, DEFAULT_STATE } from '@/lib/editor-core'
 
 describe('EditorCore in Test Environment', () => {
   it('should create CommandManager', () => {
@@ -29,8 +29,8 @@ describe('EditorCore in Test Environment', () => {
     expect(manager.canUndo()).toBe(false)
     expect(manager.canRedo()).toBe(false)
 
-    const state1 = { content: 'state1', isEditing: false }
-    const state2 = { content: 'state2', isEditing: false }
+    const state1 = { ...DEFAULT_STATE, content: 'state1', isEditing: false }
+    const state2 = { ...DEFAULT_STATE, content: 'state2', isEditing: false }
 
     manager.push(state1)
     expect(manager.canUndo()).toBe(false) // 需要2个状态才能undo
