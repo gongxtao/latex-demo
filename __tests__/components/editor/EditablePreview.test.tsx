@@ -106,6 +106,7 @@ describe('EditablePreview', () => {
 
       const iframe = container.querySelector('iframe')
       expect(iframe).toBeInTheDocument()
+      expect(iframe).toHaveAttribute('sandbox', expect.stringContaining('allow-modals'))
       // Content is written via document.write, body should exist
       expect(iframe?.contentDocument?.body).toBeDefined()
     })
@@ -115,6 +116,19 @@ describe('EditablePreview', () => {
       render(<EditablePreview {...props} />)
 
       expect(screen.getByText(/Enable Editing/i)).toBeInTheDocument()
+    })
+
+    it('should keep editor style rules in non-editing mode', async () => {
+      const props = createMockProps()
+      const { container } = render(<EditablePreview {...props} />)
+
+      await waitForIframeReady(container)
+
+      const iframe = container.querySelector('iframe') as HTMLIFrameElement
+      const style = iframe.contentDocument?.head?.querySelector('#editor-style')
+      expect(style).toBeInTheDocument()
+      expect(style?.textContent).toContain('img')
+      expect(style?.textContent).toContain('max-width: 100%')
     })
   })
 
@@ -151,6 +165,11 @@ describe('EditablePreview', () => {
           fireEvent.click(lockButton)
         })
       }
+
+      const iframe = container.querySelector('iframe') as HTMLIFrameElement
+      const style = iframe.contentDocument?.head?.querySelector('#editor-style')
+      expect(style).toBeInTheDocument()
+      expect(style?.textContent).toContain('max-width: 100%')
     })
   })
 

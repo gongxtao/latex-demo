@@ -188,11 +188,10 @@ const EditablePreviewWithRef = function EditablePreview({
     activeTableRef.current = activeTable
   }, [activeTable])
 
-  // 监听外部 content 变化，更新历史
+  // 监听外部 content 变化，触发 iframe 同步
   useEffect(() => {
     if (content !== lastSyncedContentRef.current && !isUpdatingRef.current) {
-      lastSyncedContentRef.current = content
-      // 不要在这里 push 历史，因为外部变化不应该创建新的历史条目
+      forceContentSyncRef.current = true
     }
   }, [content])
 
@@ -788,7 +787,7 @@ const EditablePreviewWithRef = function EditablePreview({
               ref={iframeRef}
               className="w-full h-full min-h-[800px] border-0"
               title="Editable Preview"
-              sandbox="allow-same-origin"
+              sandbox="allow-same-origin allow-modals"
             />
             {selectedFile && floatingImages.length > 0 && (
               <FloatingImageLayer

@@ -5,24 +5,7 @@ describe('useEditorStorage', () => {
   beforeEach(() => {
     localStorage.clear()
     jest.restoreAllMocks()
-  })
-
-  it('handles quota errors without throwing when saving content', () => {
-    const setItemSpy = jest.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
-      throw new Error('QuotaExceededError')
-    })
-
-    const { result } = renderHook(() => useEditorStorage())
-
-    expect(() => {
-      act(() => {
-        result.current.setHtmlContent('<p>large-content</p>')
-      })
-    }).not.toThrow()
-
-    expect(setItemSpy).toHaveBeenCalled()
-    expect(result.current.hasStorageError).toBe(true)
-    expect(result.current.htmlContent).toBe('<p>large-content</p>')
+    jest.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   it('clears storage error when save succeeds again', () => {
@@ -40,6 +23,8 @@ describe('useEditorStorage', () => {
       result.current.setHtmlContent('<p>large-content</p>')
     })
     expect(result.current.hasStorageError).toBe(true)
+    expect(result.current.htmlContent).toBe('<p>large-content</p>')
+    expect(console.error).toHaveBeenCalled()
 
     shouldThrow = false
     act(() => {

@@ -242,13 +242,18 @@ const TableSmartToolbar: React.FC<TableSmartToolbarProps> = ({
           const handler = new TableHandler(activeTable)
           const bounds = handler.getCellBounds(cell as HTMLTableCellElement)
           if (bounds) {
-            setIsSelecting(true)
+            const isGridSelectionMode = e.shiftKey
+            setIsSelecting(isGridSelectionMode)
             setSelection({
               startRow: bounds.startRow,
               startCol: bounds.startCol,
               endRow: bounds.endRow,
               endCol: bounds.endCol
             })
+            if (isGridSelectionMode) {
+              clearDocSelection()
+              e.preventDefault()
+            }
             return
           }
       }

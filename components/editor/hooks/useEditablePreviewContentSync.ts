@@ -95,14 +95,19 @@ export const useEditablePreviewContentSync = ({
     }
 
     let handleBlur: (() => void) | null = null
+    const existingStyle = iframeDoc.getElementById('editor-style')
+    if (existingStyle) {
+      existingStyle.remove()
+    }
+    const style = iframeDoc.createElement('style')
+    style.id = 'editor-style'
+    style.textContent = editorStyleCss
+    iframeDoc.head.appendChild(style)
+
     if (isEditing) {
       if (iframeDoc.body) {
         iframeDoc.body.contentEditable = 'true'
         iframeDoc.body.style.outline = 'none'
-        const style = iframeDoc.createElement('style')
-        style.id = 'editor-style'
-        style.textContent = editorStyleCss
-        iframeDoc.head.appendChild(style)
         iframeDoc.body.addEventListener('input', handleInput)
         handleBlur = () => {
           debouncedSync.flush()

@@ -461,7 +461,8 @@ describe('场景4: 单元格选择拖拽', () => {
         cancelable: true,
         clientX: firstRect.left + 10,
         clientY: firstRect.top + 10,
-        button: 0
+        button: 0,
+        shiftKey: true
       })
       firstCell.dispatchEvent(mousedownEvent)
 
@@ -473,6 +474,51 @@ describe('场景4: 单元格选择拖拽', () => {
         clientY: lastRect.top + 10
       })
       iframe.contentDocument!.dispatchEvent(mousemoveEvent)
+    })
+
+    cleanupMockIframe(iframe)
+  })
+
+  test('TC-TST-014A: 普通拖拽不拦截单元格文本选择', async () => {
+    const { iframe, table } = createIframeWithTable(tableFixtures.simple3x3)
+    const iframeRef = React.createRef<HTMLIFrameElement>()
+    iframeRef.current = iframe
+
+    mockTableBounds(table, { top: 100, left: 100, width: 400, height: 120 })
+
+    renderTableSmartToolbar({
+      iframeRef,
+      activeTable: table
+    })
+
+    await waitFor(() => {
+      const toolbar = document.querySelector('.absolute.inset-0.z-50')
+      expect(toolbar).toBeInTheDocument()
+    })
+
+    const firstCell = table.rows[0].cells[0]
+    const cellRect = firstCell.getBoundingClientRect()
+
+    act(() => {
+      const mousedownEvent = new MouseEvent('mousedown', {
+        bubbles: true,
+        cancelable: true,
+        clientX: cellRect.left + 10,
+        clientY: cellRect.top + 10,
+        button: 0
+      })
+      firstCell.dispatchEvent(mousedownEvent)
+
+      const mousemoveEvent = new MouseEvent('mousemove', {
+        bubbles: true,
+        cancelable: true,
+        clientX: cellRect.left + 35,
+        clientY: cellRect.top + 10
+      })
+      const preventDefault = jest.fn()
+      Object.defineProperty(mousemoveEvent, 'preventDefault', { value: preventDefault })
+      iframe.contentDocument!.dispatchEvent(mousemoveEvent)
+      expect(preventDefault).not.toHaveBeenCalled()
     })
 
     cleanupMockIframe(iframe)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import FileSelector from '@/components/FileSelector'
 import ChatBox from '@/components/ChatBox'
 import EditablePreview from '@/components/editor/EditablePreview'
@@ -16,6 +16,7 @@ export default function DocFormatterPage() {
   const [htmlContent, setHtmlContent] = useState<string>('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [floatingImages, setFloatingImages] = useState<FloatingImageItem[]>([])
+  const previewIframeRef = useRef<HTMLIFrameElement>(null)
 
   // Load file content when a file is selected
   useEffect(() => {
@@ -154,6 +155,16 @@ export default function DocFormatterPage() {
 
       // Extract filename without extension
       const filename = selectedFile.split('/').pop()?.replace('.html', '') || 'resume'
+      const iframeDoc = previewIframeRef.current?.contentDocument
+      const editorBodyRect = iframeDoc?.body?.getBoundingClientRect()
+      const searchParams = new URLSearchParams(window.location.search)
+      const isPdfDebugMode = searchParams.get('pdfDebug') === '1' || window.localStorage.getItem('pdf-export-debug') === '1'
+      const floatingCoordinateSpace = editorBodyRect ? 'body' : 'document'
+      const floatingImagesForExport = floatingImages.map(image => ({
+        ...image,
+        x: editorBodyRect ? image.x - editorBodyRect.left : image.x,
+        y: editorBodyRect ? image.y - editorBodyRect.top : image.y
+      }))
 
       // 调用服务器端API生成PDF
       const response = await fetch('/api/generate-pdf', {
@@ -162,7 +173,14 @@ export default function DocFormatterPage() {
         body: JSON.stringify({
           htmlContent: htmlContent,
           filename: filename,
-          floatingImages: floatingImages
+          floatingImages: floatingImagesForExport,
+          floatingCoordinateSpace,
+          viewportWidth: previewIframeRef.current?.clientWidth || 1024,
+          editorBodyOffset: {
+            left: editorBodyRect?.left || 0,
+            top: editorBodyRect?.top || 0
+          },
+          debug: isPdfDebugMode
         })
       })
 
@@ -173,6 +191,20 @@ export default function DocFormatterPage() {
 
       // 获取PDF文件blob
       const blob = await response.blob()
+
+      if (isPdfDebugMode) {
+        console.table({
+          editorBodyLeft: response.headers.get('X-PDF-Debug-Editor-Body-Left'),
+          editorBodyTop: response.headers.get('X-PDF-Debug-Editor-Body-Top'),
+          renderBodyLeft: response.headers.get('X-PDF-Debug-Render-Body-Left'),
+          renderBodyTop: response.headers.get('X-PDF-Debug-Render-Body-Top'),
+          deltaX: response.headers.get('X-PDF-Debug-Delta-X'),
+          deltaY: response.headers.get('X-PDF-Debug-Delta-Y'),
+          coordinateSpace: response.headers.get('X-PDF-Debug-Coordinate-Space'),
+          viewportWidth: response.headers.get('X-PDF-Debug-Viewport-Width'),
+          floatingCount: response.headers.get('X-PDF-Debug-Floating-Count')
+        })
+      }
 
       // 创建下载链接
       const url = window.URL.createObjectURL(blob)
@@ -218,6 +250,7 @@ export default function DocFormatterPage() {
         <div className="flex-1 flex flex-col h-full overflow-hidden">
           <div className="flex-1 overflow-hidden">
             <EditablePreview
+              iframeRef={previewIframeRef}
               selectedFile={selectedFile}
               content={htmlContent}
               onContentChange={handleContentChange}
